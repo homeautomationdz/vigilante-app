@@ -70,7 +70,7 @@
 
     <!-- Validation -->
     <string name="error_required_field">هذا الحقل إلزامي</string>
-    <string name="error_invalid_phone">رقم الهاتف غير صالح</string>
+    <string name="error_invalid_phone">رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 0 (مثال: 0550223366)</string>
     <string name="error_future_date">لا يسمح بتاريخ في المستقبل</string>
     <string name="error_join_before_birth">تاريخ الانضمام لا يمكن أن يكون قبل تاريخ الميلاد</string>
 

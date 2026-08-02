@@ -11,9 +11,9 @@ object Validation {
     fun isValidBloodGroup(value: String?): Boolean =
         value.isNullOrBlank() || value.trim() in BLOOD_GROUPS
 
-    /** Digits only, 8–15 digits (local formats can be layered on later). */
+    /** User rule: exactly 10 digits, starting with 0 — e.g. 0550223366. */
     fun isValidPhone(value: String): Boolean =
-        value.trim().matches(Regex("^\\d{8,15}$"))
+        value.trim().matches(Regex("^0\\d{9}$"))
 
     fun normalizeName(value: String): String =
         value.trim().replace(Regex("\\s+"), " ")

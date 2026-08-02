@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 
-const val APP_VERSION = "1.1"
+const val APP_VERSION = "1.2"
 
 /** Simple splash: app name + version, shown while the start route is decided. */
 @Composable

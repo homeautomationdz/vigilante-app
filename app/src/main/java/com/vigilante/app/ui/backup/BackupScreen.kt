@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -27,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +58,7 @@ fun BackupScreen(
     val message by viewModel.message.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val exportedFile by viewModel.exportedFile.collectAsState()
+    val backupOutcome by viewModel.backupOutcome.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -78,6 +81,29 @@ fun BackupScreen(
             context.startActivity(Intent.createChooser(share, "مشاركة ملف التصدير"))
         }
         viewModel.consumeExportedFile()
+    }
+
+    backupOutcome?.let { outcome ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissBackupOutcome,
+            title = { Text("تم إنشاء النسخة الاحتياطية") },
+            text = {
+                Text(
+                    if (outcome.downloadsPath != null) {
+                        "تم حفظ نسخة مشفرة في مجلد التنزيلات:\n${outcome.downloadsPath}" +
+                            "\n\nوتوجد نسخة داخلية في:\n${outcome.internalPath}"
+                    } else {
+                        "تم الحفظ داخل مجلد التطبيق:\n${outcome.internalPath}" +
+                            "\n\nلحفظ نسخة إضافية في مجلد التنزيلات، حدد أولًا كلمة مرور ملفات Excel من الإعدادات."
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissBackupOutcome) {
+                    Text("موافق")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -161,6 +187,11 @@ fun BackupScreen(
                                     "متطوعون: ${record.volunteerCount} • حضور: ${record.attendanceCount} • " +
                                         "مشرفون: ${record.adminCount} • الحجم: ${formatSize(record.sizeBytes)}",
                                     style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "المكان: Vigilante/Backup/${record.fileName}",
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }

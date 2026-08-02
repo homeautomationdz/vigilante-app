@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vigilante.app.data.excel.BackupManager
 import com.vigilante.app.data.excel.ImportExportService
+import com.vigilante.app.data.excel.ManualBackupOutcome
 import com.vigilante.app.data.local.VigilanteDatabase
 import com.vigilante.app.data.local.entity.BackupRecord
 import com.vigilante.app.data.local.entity.Permission
@@ -19,7 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-const val APP_VERSION = "1.1"
+const val APP_VERSION = "1.2"
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
@@ -42,6 +43,10 @@ class BackupViewModel @Inject constructor(
     private val _exportedFile = MutableStateFlow<File?>(null)
     val exportedFile: StateFlow<File?> = _exportedFile
 
+    /** Result of the last manual backup — shown in a dialog so the user knows where it was saved. */
+    private val _backupOutcome = MutableStateFlow<ManualBackupOutcome?>(null)
+    val backupOutcome: StateFlow<ManualBackupOutcome?> = _backupOutcome
+
     fun canImport(): Boolean = session.has(Permission.IMPORT_EXCEL)
     fun canExport(): Boolean = session.has(Permission.EXPORT_EXCEL)
 
@@ -50,10 +55,10 @@ class BackupViewModel @Inject constructor(
             _busy.value = true
             runCatching {
                 withContext(Dispatchers.IO) {
-                    backupManager.create(reason = "MANUAL", appVersion = APP_VERSION)
+                    backupManager.createManual(APP_VERSION)
                 }
             }
-                .onSuccess { _message.value = "تم إنشاء النسخة الاحتياطية: ${it.fileName}" }
+                .onSuccess { _backupOutcome.value = it }
                 .onFailure { _message.value = "تعذر إنشاء النسخة الاحتياطية" }
             _busy.value = false
         }
@@ -75,6 +80,10 @@ class BackupViewModel @Inject constructor(
 
     fun consumeExportedFile() {
         _exportedFile.value = null
+    }
+
+    fun dismissBackupOutcome() {
+        _backupOutcome.value = null
     }
 
     fun clearMessage() {
