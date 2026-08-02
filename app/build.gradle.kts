@@ -28,6 +28,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Signed with the debug keystore so this internal test build installs
+            // directly on a device. Replace with a real release keystore before
+            // any Play Store submission (SRS ch. 44 deliverables).
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
