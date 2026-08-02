@@ -52,7 +52,9 @@ internal object StandardCrypto {
         val verifierHash = MessageDigest.getInstance("SHA-1").digest(verifier)
         val encryptedVerifierHash = cipher.doFinal(verifierHash.copyOf(32))
 
-        val out = ByteArray(8 + headerSize + 4 + 16 + 16 + 4 + 32)
+        // versionMajor+versionMinor+flags (8) + headerSize field (4) + header +
+        // verifier (saltSize 4 + salt 16 + encVerifier 16 + hashSize 4 + hash 32)
+        val out = ByteArray(12 + headerSize + 72)
         var p = 0
         out.putLe16(p, 4); p += 2                    // versionMajor
         out.putLe16(p, 2); p += 2                    // versionMinor  → Standard
