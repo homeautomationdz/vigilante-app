@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vigilante</string>
+
+    <!-- Login -->
+    <string name="login_title">تسجيل الدخول</string>
+    <string name="username">اسم المستخدم</string>
+    <string name="password">كلمة المرور</string>
+    <string name="confirm_password">تأكيد كلمة المرور</string>
+    <string name="login_button">دخول</string>
+    <string name="show_password">إظهار كلمة المرور</string>
+    <string name="create_superadmin_title">إنشاء حساب مدير النظام</string>
+    <string name="create_account">إنشاء الحساب</string>
+    <string name="error_wrong_credentials">اسم المستخدم أو كلمة المرور غير صحيحة</string>
+    <string name="error_account_disabled">هذا الحساب معطل. تواصل مع مدير النظام</string>
+    <string name="error_login_locked">تم قفل تسجيل الدخول مؤقتًا. حاول بعد %1$d ثانية</string>
+    <string name="error_password_mismatch">كلمتا المرور غير متطابقتين</string>
+    <string name="error_password_weak">كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي على رقم واحد على الأقل</string>
+
+    <!-- Home -->
+    <string name="home_volunteers_count">عدد المتطوعين</string>
+    <string name="home_archived_count">عدد المؤرشفين</string>
+    <string name="home_attendance_today">حضور اليوم</string>
+    <string name="home_joined_this_year">المنضمون هذه السنة</string>
+    <string name="menu_volunteers">المتطوعون</string>
+    <string name="menu_attendance">الحضور</string>
+    <string name="menu_stats">الإحصائيات</string>
+    <string name="menu_archive">الأرشيف</string>
+    <string name="menu_admins">المشرفون</string>
+    <string name="menu_settings">الإعدادات</string>
+    <string name="menu_backup">النسخ الاحتياطي</string>
+
+    <!-- Volunteer fields -->
+    <string name="volunteer_id">المعرف الداخلي</string>
+    <string name="membership_number">رقم العضوية</string>
+    <string name="first_name">الاسم</string>
+    <string name="last_name">اللقب</string>
+    <string name="father_name">اسم الأب</string>
+    <string name="birth_date">تاريخ الميلاد</string>
+    <string name="join_date">تاريخ الانضمام</string>
+    <string name="municipality">البلدية</string>
+    <string name="district">الحي</string>
+    <string name="blood_group">زمرة الدم</string>
+    <string name="phone1">رقم الهاتف الأساسي</string>
+    <string name="phone2">رقم الهاتف الثاني</string>
+    <string name="photo">الصورة</string>
+    <string name="notes">الملاحظات</string>
+    <string name="status_active">نشط</string>
+    <string name="status_archived">مؤرشف</string>
+    <string name="tags">الوسوم</string>
+
+    <!-- Volunteer actions -->
+    <string name="add_volunteer">إضافة متطوع</string>
+    <string name="edit">تعديل</string>
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="call">اتصال</string>
+    <string name="whatsapp">واتساب</string>
+    <string name="copy_number">نسخ الرقم</string>
+    <string name="share_card">مشاركة البيانات</string>
+    <string name="archive_action">أرشفة</string>
+    <string name="restore_action">استعادة</string>
+    <string name="record_attendance">تسجيل حضور</string>
+    <string name="archive_confirm">هل تريد نقل هذا المتطوع إلى الأرشيف؟</string>
+    <string name="archive_reason">سبب الأرشفة (اختياري)</string>
+    <string name="phone_copied">تم نسخ الرقم</string>
+    <string name="whatsapp_not_installed">تطبيق واتساب غير مثبت على هذا الجهاز</string>
+    <string name="duplicate_phone_warning">رقم الهاتف مسجل مسبقًا لمتطوع آخر. هل تريد المتابعة؟</string>
+    <string name="continue_anyway">متابعة</string>
+
+    <!-- Validation -->
+    <string name="error_required_field">هذا الحقل إلزامي</string>
+    <string name="error_invalid_phone">رقم الهاتف غير صالح</string>
+    <string name="error_future_date">لا يسمح بتاريخ في المستقبل</string>
+    <string name="error_join_before_birth">تاريخ الانضمام لا يمكن أن يكون قبل تاريخ الميلاد</string>
+
+    <!-- Search & filters -->
+    <string name="search_hint">ابحث بالاسم أو الرقم أو الهاتف…</string>
+    <string name="filters">الفلاتر</string>
+    <string name="sort">الترتيب</string>
+    <string name="no_results">لا توجد نتائج</string>
+
+    <!-- Attendance -->
+    <string name="scan_qr">مسح QR</string>
+    <string name="manual_attendance">تسجيل يدوي</string>
+    <string name="attendance_found_title">تم العثور على المتطوع</string>
+    <string name="attendance_confirm">هل تريد تسجيل حضوره؟</string>
+    <string name="yes">نعم</string>
+    <string name="attendance_recorded">تم تسجيل الحضور</string>
+    <string name="attendance_duplicate">تم تسجيل حضور هذا المتطوع منذ لحظات</string>
+    <string name="qr_not_found">هذا المتطوع غير موجود داخل قاعدة البيانات</string>
+    <string name="qr_archived">هذا المتطوع موجود ولكنه مؤرشف</string>
+    <string name="view_data">عرض البيانات</string>
+    <string name="attendance_cancelled_note">إلغاء منطقي — تم التسجيل بالخطأ</string>
+
+    <!-- Backup / import / export -->
+    <string name="backup_now">إنشاء نسخة احتياطية</string>
+    <string name="restore_backup">استعادة نسخة احتياطية</string>
+    <string name="import_excel">استيراد Excel</string>
+    <string name="export_excel">تصدير Excel</string>
+    <string name="import_invalid_file">ملف Excel غير صالح</string>
+    <string name="import_report_title">تقرير الاستيراد</string>
+    <string name="backup_created">تم إنشاء النسخة الاحتياطية</string>
+
+    <!-- Admins -->
+    <string name="add_admin">إضافة مشرف</string>
+    <string name="role_superadmin">مدير النظام</string>
+    <string name="role_admin">مشرف</string>
+    <string name="account_active">نشط</string>
+    <string name="account_disabled">معطل</string>
+    <string name="last_login">آخر دخول</string>
+    <string name="reset_password">إعادة تعيين كلمة المرور</string>
+
+    <!-- Settings / misc -->
+    <string name="about">حول التطبيق</string>
+    <string name="version">الإصدار</string>
+    <string name="system_health">صحة النظام</string>
+    <string name="audit_log">سجل العمليات</string>
+    <string name="recycle_bin">سلة المحذوفات</string>
+    <string name="delete_permanently">حذف نهائي</string>
+    <string name="read_only_mode">وضع القراءة فقط</string>
+    <string name="timeline">السجل الزمني</string>
+    <string name="ok">موافق</string>
+    <string name="back">رجوع</string>
+</resources>
