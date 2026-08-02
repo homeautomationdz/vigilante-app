@@ -98,18 +98,32 @@ internal object CfbWriter {
     ) {
         require(encryptionInfo.isNotEmpty()) { "EncryptionInfo فارغ" }
         require(encryptionInfo.size < CfbConst.MINI_CUTOFF) { "EncryptionInfo أكبر من المتوقع" }
-        require(packageLength >= CfbConst.MINI_CUTOFF) { "حزمة البيانات صغيرة بشكل غير متوقع" }
+        require(packageLength > 0) { "حزمة البيانات فارغة" }
 
         val sector = CfbConst.SECTOR
         val entriesPerFat = sector / 4          // 128
         val entriesPerDifat = entriesPerFat - 1 // 127
 
-        val nPkg = ceilDiv(packageLength, sector.toLong()).toInt()
-        val miniStreamLen = ceilDiv(encryptionInfo.size.toLong(), CfbConst.MINI_SECTOR.toLong()).toInt() *
-            CfbConst.MINI_SECTOR
-        val nMini = miniStreamLen / CfbConst.MINI_SECTOR
+        // MS-CFB: a stream shorter than the cutoff MUST live in the mini stream.
+        // A nearly-empty database exports to well under 4 KB, so this path is real.
+        val smallPackage: ByteArray? = if (packageLength < CfbConst.MINI_CUTOFF) {
+            val bos = java.io.ByteArrayOutputStream(packageLength.toInt())
+            writePackage(bos)
+            check(bos.size().toLong() == packageLength) {
+                "حجم الحزمة غير مطابق: ${bos.size()} بدل $packageLength"
+            }
+            bos.toByteArray()
+        } else null
+
+        val infoMini = ceilDiv(encryptionInfo.size.toLong(), CfbConst.MINI_SECTOR.toLong()).toInt()
+        val pkgMini = if (smallPackage != null) {
+            ceilDiv(packageLength, CfbConst.MINI_SECTOR.toLong()).toInt()
+        } else 0
+        val nMini = infoMini + pkgMini
+        val miniStreamLen = nMini * CfbConst.MINI_SECTOR
         val nMiniStreamBig = ceilDiv(miniStreamLen.toLong(), sector.toLong()).toInt()
         val nMiniFat = ceilDiv(nMini.toLong(), entriesPerFat.toLong()).toInt()
+        val nPkg = if (smallPackage == null) ceilDiv(packageLength, sector.toLong()).toInt() else 0
         val nDir = 1
 
         val base = nDir + nMiniFat + nMiniStreamBig + nPkg
@@ -145,7 +159,8 @@ internal object CfbWriter {
 
         // ---- mini FAT ----
         val miniFat = IntArray(nMiniFat * entriesPerFat) { CfbConst.FREESECT }
-        chain(miniFat, 0, nMini)
+        chain(miniFat, 0, infoMini)
+        chain(miniFat, infoMini, pkgMini)
 
         BufferedOutputStream(FileOutputStream(target), 64 * 1024).use { out ->
             out.write(buildHeader(nFat, nDifat, difatStart, dirStart, miniFatStart, nMiniFat))
@@ -188,7 +203,9 @@ internal object CfbWriter {
             ).copyInto(dir, CfbConst.DIR_ENTRY_SIZE)
             dirEntry(
                 name = CfbConst.ENCRYPTED_PACKAGE, type = CfbConst.TYPE_STREAM, child = CfbConst.NOSTREAM,
-                left = CfbConst.NOSTREAM, right = CfbConst.NOSTREAM, start = pkgStart, size = packageLength
+                left = CfbConst.NOSTREAM, right = CfbConst.NOSTREAM,
+                start = if (smallPackage != null) infoMini else pkgStart,
+                size = packageLength
             ).copyInto(dir, CfbConst.DIR_ENTRY_SIZE * 2)
             emptyDirEntry().copyInto(dir, CfbConst.DIR_ENTRY_SIZE * 3)
             out.write(dir)
@@ -200,21 +217,25 @@ internal object CfbWriter {
                 out.write(mf)
             }
 
-            // mini stream (EncryptionInfo, zero-padded to whole big sectors)
+            // mini stream (EncryptionInfo, plus the package when it is small),
+            // zero-padded out to whole big sectors
             if (nMiniStreamBig > 0) {
                 val ms = ByteArray(nMiniStreamBig * sector)
                 encryptionInfo.copyInto(ms, 0)
+                smallPackage?.copyInto(ms, infoMini * CfbConst.MINI_SECTOR)
                 out.write(ms)
             }
 
-            // EncryptedPackage, streamed, then padded to the sector boundary
-            val counting = CountingOutputStream(out)
-            writePackage(counting)
-            check(counting.count == packageLength) {
-                "حجم الحزمة غير مطابق: ${counting.count} بدل $packageLength"
+            // EncryptedPackage as its own sector chain, streamed then padded
+            if (smallPackage == null) {
+                val counting = CountingOutputStream(out)
+                writePackage(counting)
+                check(counting.count == packageLength) {
+                    "حجم الحزمة غير مطابق: ${counting.count} بدل $packageLength"
+                }
+                val pad = (nPkg.toLong() * sector - packageLength).toInt()
+                if (pad > 0) out.write(ByteArray(pad))
             }
-            val pad = (nPkg.toLong() * sector - packageLength).toInt()
-            if (pad > 0) out.write(ByteArray(pad))
             out.flush()
         }
     }
