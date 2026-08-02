@@ -26,7 +26,25 @@ jobs:
           gradle-version: '8.11.1'
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
+
+      - name: Publish build log
+        if: always()
+        run: |
+          set -e
+          git config user.name "vigilante-ci"
+          git config user.email "ci@vigilante.local"
+          git fetch origin buildlog 2>/dev/null || true
+          git checkout --orphan buildlog-tmp
+          git rm -rf --cached . > /dev/null 2>&1 || true
+          mkdir -p /tmp/keep && cp /tmp/build.log /tmp/keep/build.log || echo "no log" > /tmp/keep/build.log
+          find . -mindepth 1 -maxdepth 1 -not -name '.git' -exec rm -rf {} +
+          cp /tmp/keep/build.log ./build.log
+          echo "run=$GITHUB_RUN_NUMBER sha=$GITHUB_SHA status=${{ job.status }} at=$(date -u)" > RUN_INFO.txt
+          git add build.log RUN_INFO.txt
+          git commit -m "build log run $GITHUB_RUN_NUMBER"
+          git push -f origin buildlog-tmp:buildlog
+          git checkout -f "$GITHUB_SHA" 2>/dev/null || git checkout -f main
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
