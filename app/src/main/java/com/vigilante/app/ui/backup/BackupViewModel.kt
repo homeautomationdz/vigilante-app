@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-const val APP_VERSION = "1.4"
+const val APP_VERSION = "1.5"
 
 /** Which long-running operation is in flight (drives per-button spinners). */
 enum class BackupBusy { NONE, BACKUP, EXPORT, SAVING }

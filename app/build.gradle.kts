@@ -14,8 +14,8 @@ android {
         applicationId = "com.vigilante.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -123,14 +123,20 @@ dependencies {
     // Password hashing
     implementation(libs.bcrypt)
 
-    // Office-native encryption for exported .xlsx files (POIFS crypto only —
-    // Excel itself prompts for the password when the file is opened on a PC)
-    implementation(libs.poi.core)
+    // NOTE: Apache POI is deliberately NOT a runtime dependency — it cannot run
+    // on Android (log4j2 + desktop-JVM classes → NoClassDefFoundError, which is
+    // exactly what broke backup/export before 1.5). Office encryption is
+    // implemented in data/excel/crypto with plain javax.crypto, and POI is used
+    // only in unit tests to prove the output is Excel-compatible.
 
     // Images
     implementation(libs.coil.compose)
 
     // Tests
+    // Apache POI on the JVM is our reference implementation: tests encrypt with
+    // our code and decrypt with POI (and vice-versa) so a regression that would
+    // produce a file Excel cannot open fails the build instead of the phone.
+    testImplementation(libs.poi.core)
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.coroutines.test)

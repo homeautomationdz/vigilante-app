@@ -1,28 +1,31 @@
 package com.vigilante.app.data.excel
 
-import org.apache.poi.poifs.crypt.Decryptor
-import org.apache.poi.poifs.crypt.EncryptionInfo
-import org.apache.poi.poifs.crypt.EncryptionMode
-import org.apache.poi.poifs.filesystem.POIFSFileSystem
+import com.vigilante.app.data.excel.crypto.AgileCrypto
+import com.vigilante.app.data.excel.crypto.CfbConst
+import com.vigilante.app.data.excel.crypto.CfbReader
+import com.vigilante.app.data.excel.crypto.StandardCrypto
+import com.vigilante.app.data.excel.crypto.le16
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 
 /**
  * Office-native password protection for exported .xlsx files.
  *
- * Uses ECMA-376 Standard Encryption (AES-128 inside an OLE2/CFB container) —
- * the same scheme Excel itself uses, so opening the exported file on a PC
- * makes Excel/LibreOffice prompt for the password. The app decrypts
- * transparently on re-import using the password stored in Settings, so
- * supervisors never type it when uploading a file back.
+ * Writing uses ECMA-376 **Standard Encryption** (AES-128 / SHA-1) inside an
+ * OLE2 container — exactly what Excel's own "Encrypt with Password" produced
+ * for years, so opening the exported file on a PC makes Excel or LibreOffice
+ * prompt for the password. Reading additionally understands **Agile
+ * Encryption**, because Excel 2016+ switches to it when a supervisor edits the
+ * exported file and saves it; such a file must still import cleanly.
+ *
+ * Implemented on plain javax.crypto: Apache POI cannot run on Android (it
+ * pulls log4j2 and desktop-JVM classes and fails with NoClassDefFoundError at
+ * runtime). CI unit tests cross-check this implementation against POI on the
+ * JVM in both directions, which is what guarantees Excel compatibility.
  */
 object ExcelCrypto {
 
-    private val OLE2_MAGIC = byteArrayOf(
-        0xD0.toByte(), 0xCF.toByte(), 0x11, 0xE0.toByte(),
-        0xA1.toByte(), 0xB1.toByte(), 0x1A, 0xE1.toByte()
-    )
+    private val OLE2_MAGIC = CfbConst.MAGIC
 
     /** True when [file] is an encrypted Office container rather than a plain xlsx (zip). */
     fun isEncrypted(file: File): Boolean {
@@ -32,23 +35,10 @@ object ExcelCrypto {
         return head.contentEquals(OLE2_MAGIC)
     }
 
-    /** Encrypts [plainXlsx] into [target] protected by [password]. */
+    /** Encrypts [plainXlsx] into [target], protected by [password]. */
     fun encrypt(plainXlsx: File, target: File, password: String) {
         require(password.isNotBlank()) { "كلمة مرور التشفير فارغة" }
-        POIFSFileSystem().use { fs ->
-            val info = EncryptionInfo(EncryptionMode.standard)
-            val encryptor = info.encryptor
-            encryptor.confirmPassword(password)
-            encryptor.getDataStream(fs).use { out ->
-                FileInputStream(plainXlsx).use { it.copyTo(out) }
-            }
-            val tmp = File(target.parentFile, target.name + ".tmp")
-            FileOutputStream(tmp).use { fs.writeFilesystem(it) }
-            if (target.exists()) target.delete()
-            if (!tmp.renameTo(target)) {
-                tmp.copyTo(target, overwrite = true); tmp.delete()
-            }
-        }
+        StandardCrypto.encrypt(plainXlsx, target, password)
     }
 
     /**
@@ -56,15 +46,26 @@ object ExcelCrypto {
      * Throws with a clear Arabic message when the password is wrong.
      */
     fun decryptToTemp(encrypted: File, password: String, tempDir: File): File {
-        POIFSFileSystem(FileInputStream(encrypted)).use { fs ->
-            val info = EncryptionInfo(fs)
-            val decryptor = Decryptor.getInstance(info)
-            check(decryptor.verifyPassword(password)) { "كلمة مرور ملف Excel غير صحيحة" }
-            val out = File(tempDir, "decrypted_${System.currentTimeMillis()}.xlsx")
-            decryptor.getDataStream(fs).use { input ->
-                FileOutputStream(out).use { input.copyTo(it) }
+        require(password.isNotBlank()) { "كلمة مرور التشفير فارغة" }
+        if (!tempDir.exists()) tempDir.mkdirs()
+        val out = File(tempDir, "decrypted_${System.currentTimeMillis()}.xlsx")
+        try {
+            CfbReader.open(encrypted).use { cfb ->
+                val info = cfb.readStream(CfbConst.ENCRYPTION_INFO)
+                require(info.size > 8) { "معلومات التشفير داخل الملف غير صالحة" }
+                val versionMajor = info.le16(0)
+                val versionMinor = info.le16(2)
+                if (versionMajor == 4 && versionMinor == 4) {
+                    AgileCrypto.decrypt(cfb, info, password, out)
+                } else {
+                    StandardCrypto.decrypt(cfb, info, password, out)
+                }
             }
+            check(out.length() > 0) { "تعذر فك تشفير الملف — تحقق من كلمة المرور" }
             return out
+        } catch (e: Throwable) {
+            out.delete()
+            throw e
         }
     }
 }
