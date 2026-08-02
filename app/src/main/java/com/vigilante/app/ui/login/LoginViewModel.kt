@@ -70,17 +70,18 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    /** First run: one full-name field — the name itself is the username. */
     fun createFirstAccount(
         fullName: String,
-        username: String,
         password: String,
         confirm: String
     ) {
+        val name = fullName.trim()
         when {
-            fullName.isBlank() ->
+            name.isBlank() ->
                 _firstRun.value = FirstRunUiState(error = "الاسم الكامل إلزامي")
-            !Validation.isValidUsername(username) ->
-                _firstRun.value = FirstRunUiState(error = "اسم المستخدم غير صالح (3 أحرف على الأقل)")
+            !Validation.isValidUsername(name) ->
+                _firstRun.value = FirstRunUiState(error = "الاسم الكامل غير صالح (3 أحرف على الأقل)")
             !Validation.isValidPassword(password) ->
                 _firstRun.value = FirstRunUiState(
                     error = "كلمة المرور يجب أن تكون 8 أحرف على الأقل وتحتوي على حرف ورقم"
@@ -89,7 +90,11 @@ class LoginViewModel @Inject constructor(
                 _firstRun.value = FirstRunUiState(error = "كلمتا المرور غير متطابقتين")
             else -> viewModelScope.launch {
                 _firstRun.value = FirstRunUiState(loading = true)
-                authRepository.createFirstSuperAdmin(fullName, username, password)
+                authRepository.createFirstSuperAdmin(
+                    fullName = name,
+                    username = name,
+                    password = password
+                )
                     .onSuccess { _firstRun.value = FirstRunUiState(created = true) }
                     .onFailure {
                         _firstRun.value = FirstRunUiState(

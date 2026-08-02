@@ -123,6 +123,18 @@ fun ImportFlowScreen(
         }
 
         when (val s = state) {
+            is ImportUiState.Failed -> {
+                AlertDialog(
+                    onDismissRequest = viewModel::cancelFlow,
+                    title = { Text("تعذر الاستيراد") },
+                    text = { Text(s.reason) },
+                    confirmButton = {
+                        TextButton(onClick = viewModel::cancelFlow) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                )
+            }
             is ImportUiState.Errors -> {
                 AlertDialog(
                     onDismissRequest = viewModel::cancelFlow,

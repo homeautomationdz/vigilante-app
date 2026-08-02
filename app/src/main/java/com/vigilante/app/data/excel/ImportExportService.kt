@@ -10,6 +10,7 @@ import com.vigilante.app.data.local.entity.AuditAction
 import com.vigilante.app.data.local.entity.Permission
 import com.vigilante.app.data.local.entity.Tag
 import com.vigilante.app.data.local.entity.VolunteerTag
+import com.vigilante.app.core.SystemLogger
 import com.vigilante.app.data.files.DownloadsWriter
 import com.vigilante.app.data.repository.AuditLogger
 import com.vigilante.app.security.Session
@@ -40,7 +41,8 @@ class ImportExportService @Inject constructor(
     private val folders: AppFolders,
     private val audit: AuditLogger,
     private val session: Session,
-    private val downloads: DownloadsWriter
+    private val downloads: DownloadsWriter,
+    private val syslog: SystemLogger
 ) {
     suspend fun readImportFile(file: File): ImportReadResult {
         check(session.has(Permission.IMPORT_EXCEL)) { "لا تملك صلاحية الاستيراد" }
@@ -60,7 +62,14 @@ class ImportExportService @Inject constructor(
                 }
         } else file
         return try {
-            importer.read(readable, orgId)
+            importer.read(readable, orgId).also { result ->
+                if (result is ImportReadResult.InvalidFile) {
+                    syslog.log("IMPORT", "ملف استيراد غير صالح: ${result.reason}")
+                }
+            }
+        } catch (e: Exception) {
+            syslog.log("IMPORT", "فشل قراءة ملف الاستيراد", e)
+            ImportReadResult.InvalidFile("تعذر قراءة الملف: ${e.message ?: "خطأ غير متوقع"}")
         } finally {
             if (readable !== file) readable.delete()
         }
@@ -154,6 +163,8 @@ class ImportExportService @Inject constructor(
             adminsAdded = plan.newAdmins.size,
             backupFileName = backupRecord.fileName
         )
+    }.onFailure { e ->
+        syslog.log("IMPORT", "فشل تنفيذ الاستيراد/الدمج", e)
     }
 
     /**
@@ -188,7 +199,10 @@ class ImportExportService @Inject constructor(
                 "تصدير مشفر: $name"
             )
         }
-        ExportOutcome(target, name)
+        // Suggested display name for the system save dialog (user spec).
+        ExportOutcome(target, "Volunteers_Master_${LocalDate.now()}.xlsx")
+    }.onFailure { e ->
+        syslog.log("EXPORT", "فشل تصدير قاعدة البيانات", e)
     }
 
     /** Rewrites the official master file (called after every mutating flow). */

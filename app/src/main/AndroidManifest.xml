@@ -4,10 +4,8 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <!-- Legacy write access for saving exports into Downloads on Android 8–9 -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <!-- File access uses the Storage Access Framework exclusively — no legacy
+         storage permissions (Google-recommended for Android 11+). -->
 
     <application
         android:name=".VigilanteApp"

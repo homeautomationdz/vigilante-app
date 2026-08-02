@@ -1,6 +1,5 @@
 package com.vigilante.app.ui.backup
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -36,9 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,10 +45,6 @@ import com.vigilante.app.R
 import com.vigilante.app.ui.components.EmptyState
 import com.vigilante.app.ui.components.SectionHeader
 import com.vigilante.app.ui.components.VigilanteTopBar
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import java.time.format.DateTimeFormatter
 
 private val dateTimeFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
@@ -65,12 +60,11 @@ fun BackupScreen(
 ) {
     val backups by viewModel.backups.collectAsState()
     val message by viewModel.message.collectAsState()
+    val errorDialog by viewModel.errorDialog.collectAsState()
     val busy by viewModel.busy.collectAsState()
-    val exportOutcome by viewModel.exportOutcome.collectAsState()
+    val exportReady by viewModel.exportReady.collectAsState()
     val backupOutcome by viewModel.backupOutcome.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(message) {
         message?.let {
@@ -79,61 +73,70 @@ fun BackupScreen(
         }
     }
 
-    /** Copies [source] to the user-picked document [uri]; posts [onSaved] or a fallback message. */
-    fun copyToPickedLocation(source: File, uri: Uri, onSaved: String, onFailed: String) {
-        scope.launch {
-            val copied = withContext(Dispatchers.IO) {
-                runCatching {
-                    context.contentResolver.openOutputStream(uri)?.use { out ->
-                        source.inputStream().use { it.copyTo(out) }
-                    } ?: error("تعذر فتح الوجهة المختارة")
-                }
-            }
-            viewModel.postMessage(if (copied.isSuccess) onSaved else onFailed)
-        }
-    }
-
-    // Export: system "save as" dialog so the user picks WHERE the encrypted file goes.
+    // Export: the user explicitly taps a button inside the dialog below to open
+    // the system "save as" dialog (user gesture -> launch; no auto-launch from
+    // effects, which could re-fire or be dropped across activity recreation).
     val exportSaveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(EXCEL_MIME)
     ) { uri ->
-        val outcome = viewModel.exportOutcome.value ?: return@rememberLauncherForActivityResult
-        viewModel.consumeExportOutcome()
         if (uri == null) {
-            viewModel.postMessage(
-                "أُلغي الحفظ — الملف موجود داخل التطبيق في Vigilante/Export/${outcome.fileName}"
-            )
+            viewModel.postMessage("أُلغي الحفظ")
         } else {
-            copyToPickedLocation(
-                source = outcome.file,
-                uri = uri,
-                onSaved = "تم حفظ الملف المشفر في المكان الذي اخترته",
-                onFailed = "تعذر الحفظ في المكان المختار — الملف موجود داخل التطبيق في " +
-                    "Vigilante/Export/${outcome.fileName}"
-            )
+            viewModel.saveExportTo(uri)
         }
     }
 
-    LaunchedEffect(exportOutcome) {
-        exportOutcome?.let { exportSaveLauncher.launch(it.fileName) }
-    }
-
-    // Manual backup: same dialog, seeded with the backup file name.
+    // Manual backup: same pattern, seeded with the backup file name.
     val backupSaveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(EXCEL_MIME)
     ) { uri ->
-        val outcome = viewModel.backupOutcome.value ?: return@rememberLauncherForActivityResult
-        val protectedFile = outcome.protectedFile ?: return@rememberLauncherForActivityResult
-        if (uri != null) {
-            viewModel.dismissBackupOutcome()
-            copyToPickedLocation(
-                source = protectedFile,
-                uri = uri,
-                onSaved = "تم حفظ النسخة المشفرة في المكان الذي اخترته",
-                onFailed = "تعذر الحفظ في المكان المختار — توجد نسخة داخلية في ${outcome.internalPath}"
-            )
+        if (uri == null) {
+            viewModel.postMessage("أُلغي الحفظ")
+        } else {
+            viewModel.saveBackupTo(uri)
         }
-        // On cancel the dialog stays open so the user can retry or dismiss.
+    }
+
+    // Fatal errors: explicit dialog, never a transient snackbar.
+    errorDialog?.let { text ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissError,
+            title = { Text("خطأ") },
+            text = { Text(text) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissError) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        )
+    }
+
+    // Export finished: ask the user WHERE to save it.
+    exportReady?.let { ready ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissExportReady,
+            title = { Text("الملف جاهز — اختر مكان الحفظ") },
+            text = {
+                Text(
+                    "تم إنشاء الملف المشفر:\n${ready.fileName}\n\n" +
+                        "اختر المكان الذي تريد حفظه فيه. توجد نسخة داخلية أيضًا في مجلد " +
+                        "Vigilante/Export داخل التطبيق."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { exportSaveLauncher.launch(ready.fileName) },
+                    enabled = busy == BackupBusy.NONE
+                ) {
+                    Text("اختيار مكان الحفظ…")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissExportReady) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 
     backupOutcome?.let { outcome ->
@@ -153,7 +156,10 @@ fun BackupScreen(
             },
             confirmButton = {
                 if (outcome.protectedFile != null) {
-                    TextButton(onClick = { backupSaveLauncher.launch(outcome.record.fileName) }) {
+                    TextButton(
+                        onClick = { backupSaveLauncher.launch(outcome.record.fileName) },
+                        enabled = busy == BackupBusy.NONE
+                    ) {
                         Text("اختيار مكان الحفظ…")
                     }
                 } else {
@@ -182,20 +188,27 @@ fun BackupScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            if (busy) {
+            if (busy != BackupBusy.NONE) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
             }
             Button(
                 onClick = viewModel::createBackup,
-                enabled = !busy,
+                enabled = busy == BackupBusy.NONE,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Icon(Icons.Filled.Save, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.backup_now), style = MaterialTheme.typography.titleMedium)
+                if (busy == BackupBusy.BACKUP) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(Icons.Filled.Save, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.backup_now), style = MaterialTheme.typography.titleMedium)
+                }
             }
             Row(
                 modifier = Modifier
@@ -206,20 +219,24 @@ fun BackupScreen(
                 if (viewModel.canExport()) {
                     OutlinedButton(
                         onClick = viewModel::export,
-                        enabled = !busy,
+                        enabled = busy == BackupBusy.NONE,
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp)
                     ) {
-                        Icon(Icons.Filled.FileUpload, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.export_excel))
+                        if (busy == BackupBusy.EXPORT) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                        } else {
+                            Icon(Icons.Filled.FileUpload, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.export_excel))
+                        }
                     }
                 }
                 if (viewModel.canImport()) {
                     OutlinedButton(
                         onClick = onOpenImport,
-                        enabled = !busy,
+                        enabled = busy == BackupBusy.NONE,
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp)

@@ -38,6 +38,8 @@ object Validation {
             password.any { it.isDigit() } &&
             password.any { it.isLetter() }
 
+    /** Letters/digits/space/._- ; spaces allowed because the first account's
+     *  username IS the full name (user decision — no separate username field). */
     fun isValidUsername(username: String): Boolean =
-        username.trim().matches(Regex("^[\\p{L}\\p{N}_.-]{3,32}$"))
+        username.trim().matches(Regex("^[\\p{L}\\p{N} _.-]{3,40}$"))
 }

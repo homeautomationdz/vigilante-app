@@ -27,6 +27,9 @@ import javax.inject.Inject
 sealed interface ImportUiState {
     data object Idle : ImportUiState
     data object Working : ImportUiState
+
+    /** Terminal failure — shown in an explicit AlertDialog, not a snackbar. */
+    data class Failed(val reason: String) : ImportUiState
     data class Errors(val errors: List<RowError>) : ImportUiState
     data class OrgWarning(
         val fileOrgId: String,
@@ -72,18 +75,15 @@ class ImportViewModel @Inject constructor(
             readResult
                 .onSuccess { handleReadResult(it) }
                 .onFailure {
-                    _state.value = ImportUiState.Idle
-                    _message.value = it.message ?: "تعذر قراءة الملف"
+                    _state.value = ImportUiState.Failed(it.message ?: "تعذر قراءة الملف")
                 }
         }
     }
 
     private suspend fun handleReadResult(result: ImportReadResult) {
         when (result) {
-            is ImportReadResult.InvalidFile -> {
-                _state.value = ImportUiState.Idle
-                _message.value = "ملف Excel غير صالح: ${result.reason}"
-            }
+            is ImportReadResult.InvalidFile ->
+                _state.value = ImportUiState.Failed("ملف Excel غير صالح: ${result.reason}")
             is ImportReadResult.ValidationFailed ->
                 _state.value = ImportUiState.Errors(result.errors)
             is ImportReadResult.WrongOrganization ->
@@ -106,8 +106,9 @@ class ImportViewModel @Inject constructor(
         runCatching { withContext(Dispatchers.IO) { service.analyze(data) } }
             .onSuccess { plan -> _state.value = ImportUiState.PlanReady(plan) }
             .onFailure {
-                _state.value = ImportUiState.Idle
-                _message.value = "تعذر تحليل البيانات"
+                _state.value = ImportUiState.Failed(
+                    "تعذر تحليل البيانات: ${it.message ?: "خطأ غير متوقع"}"
+                )
             }
     }
 
@@ -141,8 +142,9 @@ class ImportViewModel @Inject constructor(
             withContext(Dispatchers.IO) { service.apply(plan, resolutions, APP_VERSION) }
                 .onSuccess { report -> _state.value = ImportUiState.Done(report) }
                 .onFailure {
-                    _state.value = ImportUiState.Idle
-                    _message.value = it.message ?: "تعذر تنفيذ الاستيراد"
+                    _state.value = ImportUiState.Failed(
+                        "تعذر تنفيذ الاستيراد: ${it.message ?: "خطأ غير متوقع"}"
+                    )
                 }
         }
     }

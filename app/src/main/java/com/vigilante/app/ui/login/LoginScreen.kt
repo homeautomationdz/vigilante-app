@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 
-const val APP_VERSION = "1.3"
+const val APP_VERSION = "1.4"
 
 /** Simple splash: app name + version, shown while the start route is decided. */
 @Composable
@@ -175,7 +175,6 @@ fun FirstRunScreen(
 ) {
     val state by viewModel.firstRun.collectAsState()
     var fullName by rememberSaveable { mutableStateOf("") }
-    var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirm by rememberSaveable { mutableStateOf("") }
     var showPassword by rememberSaveable { mutableStateOf(false) }
@@ -219,13 +218,14 @@ fun FirstRunScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text(stringResource(R.string.username)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            "ستسجل الدخول لاحقًا باسمك الكامل كاسم مستخدم",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
@@ -269,7 +269,7 @@ fun FirstRunScreen(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = { viewModel.createFirstAccount(fullName, username, password, confirm) },
+            onClick = { viewModel.createFirstAccount(fullName, password, confirm) },
             enabled = !state.loading,
             modifier = Modifier
                 .fillMaxWidth()
