@@ -81,14 +81,16 @@ class ExcelImporter @Inject constructor() {
     ) {
         val rows = sheet.openStream()
         var header: Map<String, Int>? = null
+        var headerInvalid = false
         rows.use { stream ->
             stream.forEach { row ->
+                if (headerInvalid) return@forEach
                 if (header == null) {
                     header = headerMap(row)
                     val missing = ExcelSchema.Volunteers.REQUIRED.filter { it !in header!! }
                     if (missing.isNotEmpty()) {
                         errors += RowError(sheetName, 1, "أعمدة أساسية مفقودة: ${missing.joinToString()}")
-                        return
+                        headerInvalid = true
                     }
                     return@forEach
                 }
@@ -171,14 +173,16 @@ class ExcelImporter @Inject constructor() {
         volunteerIds: Set<String>
     ) {
         var header: Map<String, Int>? = null
+        var headerInvalid = false
         sheet.openStream().use { stream ->
             stream.forEach { row ->
+                if (headerInvalid) return@forEach
                 if (header == null) {
                     header = headerMap(row)
                     val missing = ExcelSchema.Attendance.REQUIRED.filter { it !in header!! }
                     if (missing.isNotEmpty()) {
                         errors += RowError(ExcelSchema.Sheets.ATTENDANCE, 1, "أعمدة أساسية مفقودة: ${missing.joinToString()}")
-                        return
+                        headerInvalid = true
                     }
                     return@forEach
                 }
