@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -18,11 +19,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -43,9 +47,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
@@ -164,17 +171,21 @@ fun SettingsScreen(
                             },
                             label = { Text("مدة قفل تسجيل الدخول (ثوانٍ)") },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        OutlinedTextField(
-                            value = state.duplicateSeconds,
-                            onValueChange = { value ->
-                                viewModel.update { it.copy(duplicateSeconds = value.filter(Char::isDigit)) }
-                            },
-                            label = { Text("نافذة منع تكرار الحضور (ثوانٍ)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        if (BuildConfig.ATTENDANCE_ENABLED) {
+                            OutlinedTextField(
+                                value = state.duplicateSeconds,
+                                onValueChange = { value ->
+                                    viewModel.update { it.copy(duplicateSeconds = value.filter(Char::isDigit)) }
+                                },
+                                label = { Text("نافذة منع تكرار الحضور (ثوانٍ)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                         OutlinedTextField(
                             value = state.sessionTimeoutMinutes,
                             onValueChange = { value ->
@@ -184,6 +195,7 @@ fun SettingsScreen(
                             },
                             label = { Text("مهلة انتهاء الجلسة (دقائق)") },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -193,12 +205,43 @@ fun SettingsScreen(
                             },
                             label = { Text("مدة بقاء سلة المحذوفات (أيام)") },
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Button(
                             onClick = viewModel::saveSecurity,
                             modifier = Modifier.fillMaxWidth()
                         ) { Text(stringResource(R.string.save)) }
+
+                        HorizontalDivider()
+                        var showExcelPassword by remember { mutableStateOf(false) }
+                        OutlinedTextField(
+                            value = state.excelPassword,
+                            onValueChange = { value ->
+                                viewModel.update { it.copy(excelPassword = value) }
+                            },
+                            label = { Text("كلمة مرور ملفات Excel المصدَّرة") },
+                            singleLine = true,
+                            visualTransformation = if (showExcelPassword) VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showExcelPassword = !showExcelPassword }) {
+                                    Icon(
+                                        if (showExcelPassword) Icons.Filled.VisibilityOff
+                                        else Icons.Filled.Visibility,
+                                        contentDescription = stringResource(R.string.show_password)
+                                    )
+                                }
+                            },
+                            supportingText = {
+                                Text("يُطلب إدخالها عند فتح الملف على الكمبيوتر")
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = viewModel::saveExcelPassword,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("حفظ كلمة مرور Excel") }
                     }
                 }
             }

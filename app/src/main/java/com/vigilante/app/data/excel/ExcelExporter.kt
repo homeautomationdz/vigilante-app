@@ -140,11 +140,13 @@ class ExcelExporter @Inject constructor(
         ws.rightToLeft()
         header(ws, ExcelSchema.Settings.ALL)
         var r = 1
-        db.settingsDao().all().forEach { s ->
-            ws.value(r, 0, s.key)
-            ws.value(r, 1, s.value)
-            r++
-        }
+        db.settingsDao().all()
+            .filter { it.key != AppSetting.KEY_EXCEL_PASSWORD }   // never export the password
+            .forEach { s ->
+                ws.value(r, 0, s.key)
+                ws.value(r, 1, s.value)
+                r++
+            }
     }
 
     private fun writeBloodGroupsSheet(wb: Workbook) {

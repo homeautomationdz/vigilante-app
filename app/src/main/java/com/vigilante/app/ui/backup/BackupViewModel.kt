@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-const val APP_VERSION = "1.0"
+const val APP_VERSION = "1.1"
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
@@ -63,9 +63,10 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             _busy.value = true
             withContext(Dispatchers.IO) { importExportService.export(APP_VERSION) }
-                .onSuccess { file ->
-                    _message.value = "تم التصدير: ${file.name}"
-                    _exportedFile.value = file
+                .onSuccess { outcome ->
+                    _message.value =
+                        "تم حفظ الملف المشفر في مجلد التنزيلات: ${outcome.downloadsPath}"
+                    _exportedFile.value = outcome.file
                 }
                 .onFailure { _message.value = it.message ?: "تعذر التصدير" }
             _busy.value = false

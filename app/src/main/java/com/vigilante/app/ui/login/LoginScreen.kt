@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 
-const val APP_VERSION = "1.0"
+const val APP_VERSION = "1.1"
 
 /** Simple splash: app name + version, shown while the start route is decided. */
 @Composable
@@ -55,7 +55,7 @@ fun SplashContent() {
                 tint = MaterialTheme.colorScheme.primary
             )
             Text(
-                stringResource(R.string.app_name),
+                stringResource(R.string.app_label),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary
             )

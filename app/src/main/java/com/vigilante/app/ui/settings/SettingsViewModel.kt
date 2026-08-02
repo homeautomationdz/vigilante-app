@@ -25,6 +25,7 @@ data class SettingsUiState(
     val duplicateSeconds: String = "60",
     val sessionTimeoutMinutes: String = "15",
     val recycleBinDays: String = "30",
+    val excelPassword: String = "",
     val readOnlyMode: Boolean = false
 )
 
@@ -70,6 +71,7 @@ class SettingsViewModel @Inject constructor(
                 sessionTimeoutMinutes =
                     settingsRepository.get(AppSetting.KEY_SESSION_TIMEOUT_MINUTES) ?: "15",
                 recycleBinDays = settingsRepository.get(AppSetting.KEY_RECYCLE_BIN_DAYS) ?: "30",
+                excelPassword = settingsRepository.get(AppSetting.KEY_EXCEL_PASSWORD).orEmpty(),
                 readOnlyMode = session.readOnlyMode ||
                     settingsRepository.get(AppSetting.KEY_READ_ONLY_MODE) == "true"
             )
@@ -122,6 +124,19 @@ class SettingsViewModel @Inject constructor(
             val failure = results.firstOrNull { it.isFailure }
             _message.value = if (failure == null) "تم حفظ إعدادات الأمان"
             else failure.exceptionOrNull()?.message ?: "تعذر الحفظ"
+        }
+    }
+
+    fun saveExcelPassword() {
+        viewModelScope.launch {
+            val password = _state.value.excelPassword.trim()
+            if (password.isEmpty()) {
+                _message.value = "أدخل كلمة مرور غير فارغة"
+                return@launch
+            }
+            settingsRepository.set(AppSetting.KEY_EXCEL_PASSWORD, password)
+                .onSuccess { _message.value = "تم حفظ كلمة مرور ملفات Excel" }
+                .onFailure { _message.value = it.message ?: "تعذر الحفظ" }
         }
     }
 

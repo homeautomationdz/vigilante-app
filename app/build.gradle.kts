@@ -14,10 +14,29 @@ android {
         applicationId = "com.vigilante.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // Two editions (user decision): "full" = everything; "stats" = no attendance,
+    // volunteer statistics kept front and center. Separate applicationId so both
+    // can be installed side by side.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+            buildConfigField("boolean", "ATTENDANCE_ENABLED", "true")
+            resValue("string", "app_label", "Vigilante")
+        }
+        create("stats") {
+            dimension = "edition"
+            applicationIdSuffix = ".stats"
+            versionNameSuffix = "-stats"
+            buildConfigField("boolean", "ATTENDANCE_ENABLED", "false")
+            resValue("string", "app_label", "Vigilante إحصاء")
+        }
     }
 
     buildTypes {
@@ -40,7 +59,10 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -100,6 +122,10 @@ dependencies {
 
     // Password hashing
     implementation(libs.bcrypt)
+
+    // Office-native encryption for exported .xlsx files (POIFS crypto only —
+    // Excel itself prompts for the password when the file is opened on a PC)
+    implementation(libs.poi.core)
 
     // Images
     implementation(libs.coil.compose)

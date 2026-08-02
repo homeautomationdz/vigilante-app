@@ -63,6 +63,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import kotlinx.coroutines.launch
 import com.vigilante.app.data.local.entity.Permission
@@ -216,7 +217,8 @@ fun VolunteerDetailScreen(
                     }
                     context.startActivity(Intent.createChooser(share, "مشاركة بيانات المتطوع"))
                 }
-                if (v.status == VolunteerStatus.ACTIVE &&
+                if (BuildConfig.ATTENDANCE_ENABLED &&
+                    v.status == VolunteerStatus.ACTIVE &&
                     viewModel.has(Permission.RECORD_ATTENDANCE)
                 ) {
                     ActionButton(stringResource(R.string.record_attendance), Icons.Filled.HowToReg) {
@@ -289,12 +291,14 @@ fun VolunteerDetailScreen(
                 }
             }
 
-            SectionHeader("ملخص الحضور")
-            Card {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    DetailRow("عدد مرات الحضور", summary.count.toString())
-                    DetailRow("أول حضور", summary.first?.format(dateTimeFmt))
-                    DetailRow("آخر حضور", summary.last?.format(dateTimeFmt))
+            if (BuildConfig.ATTENDANCE_ENABLED) {
+                SectionHeader("ملخص الحضور")
+                Card {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        DetailRow("عدد مرات الحضور", summary.count.toString())
+                        DetailRow("أول حضور", summary.first?.format(dateTimeFmt))
+                        DetailRow("آخر حضور", summary.last?.format(dateTimeFmt))
+                    }
                 }
             }
 

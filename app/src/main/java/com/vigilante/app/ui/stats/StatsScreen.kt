@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.data.local.dao.GroupCount
 import com.vigilante.app.ui.components.EmptyState
@@ -85,18 +86,20 @@ fun StatsScreen(
                 StatCard("منضمو الشهر", stats.joinedThisMonth.toString(), modifier = Modifier.weight(1f))
             }
 
-            SectionHeader("الحضور", modifier = Modifier.padding(top = 16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatCard("اليوم", stats.attendanceToday.toString(), modifier = Modifier.weight(1f))
-                StatCard("الأسبوع", stats.attendanceThisWeek.toString(), modifier = Modifier.weight(1f))
-                StatCard("الشهر", stats.attendanceThisMonth.toString(), modifier = Modifier.weight(1f))
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                StatCard("السنة", stats.attendanceThisYear.toString(), modifier = Modifier.weight(1f))
-                StatCard("الإجمالي", stats.attendanceTotal.toString(), modifier = Modifier.weight(1f))
+            if (BuildConfig.ATTENDANCE_ENABLED) {
+                SectionHeader("الحضور", modifier = Modifier.padding(top = 16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatCard("اليوم", stats.attendanceToday.toString(), modifier = Modifier.weight(1f))
+                    StatCard("الأسبوع", stats.attendanceThisWeek.toString(), modifier = Modifier.weight(1f))
+                    StatCard("الشهر", stats.attendanceThisMonth.toString(), modifier = Modifier.weight(1f))
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    StatCard("السنة", stats.attendanceThisYear.toString(), modifier = Modifier.weight(1f))
+                    StatCard("الإجمالي", stats.attendanceTotal.toString(), modifier = Modifier.weight(1f))
+                }
             }
 
             SectionHeader(stringResource(R.string.blood_group), modifier = Modifier.padding(top = 16.dp))
@@ -113,11 +116,13 @@ fun StatsScreen(
                 MunicipalityBars(stats.byMunicipality.take(10))
             }
 
-            SectionHeader("الأكثر حضورًا", modifier = Modifier.padding(top = 16.dp))
-            AttendeeList(state.topAttendees)
+            if (BuildConfig.ATTENDANCE_ENABLED) {
+                SectionHeader("الأكثر حضورًا", modifier = Modifier.padding(top = 16.dp))
+                AttendeeList(state.topAttendees)
 
-            SectionHeader("الأقل حضورًا", modifier = Modifier.padding(top = 16.dp))
-            AttendeeList(state.lowestAttendees)
+                SectionHeader("الأقل حضورًا", modifier = Modifier.padding(top = 16.dp))
+                AttendeeList(state.lowestAttendees)
+            }
 
             Spacer(Modifier.height(24.dp))
         }

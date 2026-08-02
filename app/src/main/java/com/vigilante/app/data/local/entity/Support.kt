@@ -24,6 +24,9 @@ data class AppSetting(
         const val KEY_SESSION_TIMEOUT_MINUTES = "session_timeout_minutes"           // default 15
         const val KEY_RECYCLE_BIN_DAYS = "recycle_bin_days"         // default 30
         const val KEY_READ_ONLY_MODE = "read_only_mode"             // "true"/"false"
+        /** Password that protects exported .xlsx files (Office-native encryption).
+         *  Never written into the exported Settings sheet. */
+        const val KEY_EXCEL_PASSWORD = "excel_export_password"
         const val KEY_MEMBERSHIP_YEAR_SEQ_PREFIX = "membership_seq_" // + year → last used seq
 
         const val CURRENT_DB_VERSION = "1.0"

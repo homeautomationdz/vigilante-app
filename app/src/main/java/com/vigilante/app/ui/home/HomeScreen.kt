@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.data.local.entity.Permission
 import com.vigilante.app.ui.components.ConfirmDialog
@@ -75,7 +76,9 @@ fun HomeScreen(
     val menu = remember(sessionState) {
         buildList {
             add(MenuEntry("المتطوعون", Icons.Filled.Groups, Route.VolunteerList.route))
-            add(MenuEntry("الحضور", Icons.Filled.HowToReg, Route.Attendance.route))
+            if (BuildConfig.ATTENDANCE_ENABLED) {
+                add(MenuEntry("الحضور", Icons.Filled.HowToReg, Route.Attendance.route))
+            }
             add(MenuEntry("الإحصائيات", Icons.Filled.BarChart, Route.Stats.route))
             add(MenuEntry("الأرشيف", Icons.Filled.Archive, Route.Archive.route))
             if (viewModel.has(Permission.MANAGE_ADMINS)) {
@@ -101,7 +104,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             VigilanteTopBar(
-                title = stringResource(R.string.app_name),
+                title = stringResource(R.string.app_label),
                 actions = {
                     IconButton(onClick = { showLogoutConfirm = true }) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "تسجيل الخروج")
@@ -165,11 +168,13 @@ fun HomeScreen(
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatCard(
-                    title = stringResource(R.string.home_attendance_today),
-                    value = attendanceToday.toString(),
-                    modifier = Modifier.weight(1f)
-                )
+                if (BuildConfig.ATTENDANCE_ENABLED) {
+                    StatCard(
+                        title = stringResource(R.string.home_attendance_today),
+                        value = attendanceToday.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 StatCard(
                     title = stringResource(R.string.home_joined_this_year),
                     value = joinedThisYear.toString(),

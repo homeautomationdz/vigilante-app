@@ -15,6 +15,7 @@ zxingCore = "3.5.3"
 zxingEmbedded = "4.3.0"
 fastexcel = "0.18.4"
 bcrypt = "0.10.2"
+poi = "5.2.5"
 coil = "2.7.0"
 workManager = "2.10.0"
 hiltWork = "1.2.0"
@@ -52,6 +53,7 @@ zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", v
 fastexcel = { group = "org.dhatim", name = "fastexcel", version.ref = "fastexcel" }
 fastexcel-reader = { group = "org.dhatim", name = "fastexcel-reader", version.ref = "fastexcel" }
 bcrypt = { group = "at.favre.lib", name = "bcrypt", version.ref = "bcrypt" }
+poi-core = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 desugar-jdk = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

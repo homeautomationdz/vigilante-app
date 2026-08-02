@@ -10,12 +10,16 @@ import com.vigilante.app.data.local.entity.AuditAction
 import com.vigilante.app.data.local.entity.Permission
 import com.vigilante.app.data.local.entity.Tag
 import com.vigilante.app.data.local.entity.VolunteerTag
+import com.vigilante.app.data.files.DownloadsWriter
 import com.vigilante.app.data.repository.AuditLogger
 import com.vigilante.app.security.Session
 import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** Result of an export: the internal encrypted file + its Downloads location. */
+data class ExportOutcome(val file: File, val downloadsPath: String)
 
 /**
  * Orchestrates the 9-step import flow (SRS ch. 50):
@@ -31,12 +35,31 @@ class ImportExportService @Inject constructor(
     private val backup: BackupManager,
     private val folders: AppFolders,
     private val audit: AuditLogger,
-    private val session: Session
+    private val session: Session,
+    private val downloads: DownloadsWriter
 ) {
     suspend fun readImportFile(file: File): ImportReadResult {
         check(session.has(Permission.IMPORT_EXCEL)) { "لا تملك صلاحية الاستيراد" }
         val orgId = db.settingsDao().get(AppSetting.KEY_ORG_ID)
-        return importer.read(file, orgId)
+        // Password-protected export? Decrypt transparently — the supervisor
+        // uploading the file never types the password (user decision).
+        val readable = if (ExcelCrypto.isEncrypted(file)) {
+            val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)
+                ?: return ImportReadResult.InvalidFile(
+                    "الملف مشفر وكلمة مرور ملفات Excel غير محددة في الإعدادات"
+                )
+            runCatching { ExcelCrypto.decryptToTemp(file, password, folders.import) }
+                .getOrElse { e ->
+                    return ImportReadResult.InvalidFile(
+                        e.message ?: "تعذر فك تشفير الملف — تحقق من كلمة المرور في الإعدادات"
+                    )
+                }
+        } else file
+        return try {
+            importer.read(readable, orgId)
+        } finally {
+            if (readable !== file) readable.delete()
+        }
     }
 
     suspend fun analyze(data: ImportedData): MergePlan = merge.plan(data)
@@ -129,9 +152,17 @@ class ImportExportService @Inject constructor(
         )
     }
 
-    /** Export (SRS ch. 49) to Vigilante/Export/Export_YYYY-MM-DD.xlsx. */
-    suspend fun export(appVersion: String): Result<File> = runCatching {
+    /**
+     * Export (SRS ch. 49 + user decisions): the exported file is encrypted with
+     * the Excel password (Office-native — Excel prompts for it on a PC) and a
+     * copy is placed in the phone's public Downloads folder. The internal copy
+     * in Vigilante/Export/ is the same encrypted file.
+     */
+    suspend fun export(appVersion: String): Result<ExportOutcome> = runCatching {
         check(session.has(Permission.EXPORT_EXCEL)) { "لا تملك صلاحية التصدير" }
+        val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)
+            ?.takeIf { it.isNotBlank() }
+            ?: error("حدد أولًا كلمة مرور ملفات Excel من الإعدادات لحماية الملف المصدَّر")
         folders.ensureAll()
         var name = "Export_${LocalDate.now()}.xlsx"
         var target = File(folders.export, name)
@@ -139,11 +170,22 @@ class ImportExportService @Inject constructor(
         while (target.exists()) {
             name = "Export_${LocalDate.now()}_$i.xlsx"; target = File(folders.export, name); i++
         }
-        val file = exporter.exportAll(target, appVersion)
-        db.withTransaction {
-            audit.log(session.require().admin.username, AuditAction.EXPORT_EXCEL, "تصدير: $name")
+        // 1) plain workbook to a temp file, 2) encrypt into Export/, 3) copy to Downloads
+        val plain = File(folders.export, "$name.plain.tmp")
+        try {
+            exporter.exportAll(plain, appVersion)
+            ExcelCrypto.encrypt(plain, target, password)
+        } finally {
+            plain.delete()
         }
-        file
+        val downloadsPath = downloads.write(target, name)
+        db.withTransaction {
+            audit.log(
+                session.require().admin.username, AuditAction.EXPORT_EXCEL,
+                "تصدير مشفر: $name → مجلد التنزيلات"
+            )
+        }
+        ExportOutcome(target, downloadsPath)
     }
 
     /** Rewrites the official master file (called after every mutating flow). */

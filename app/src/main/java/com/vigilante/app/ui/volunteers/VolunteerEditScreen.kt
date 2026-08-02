@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -240,13 +242,15 @@ fun VolunteerEditScreen(
                 value = state.phone1,
                 onValue = { value -> viewModel.update { it.copy(phone1 = value.filter(Char::isDigit)) } },
                 label = stringResource(R.string.phone1),
-                error = state.fieldErrors["phone1"]
+                error = state.fieldErrors["phone1"],
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             FieldWithError(
                 value = state.phone2,
                 onValue = { value -> viewModel.update { it.copy(phone2 = value.filter(Char::isDigit)) } },
                 label = stringResource(R.string.phone2),
-                error = state.fieldErrors["phone2"]
+                error = state.fieldErrors["phone2"],
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             OutlinedTextField(
                 value = state.notes,
@@ -350,7 +354,8 @@ private fun FieldWithError(
     value: String,
     onValue: (String) -> Unit,
     label: String,
-    error: String?
+    error: String?,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
 ) {
     OutlinedTextField(
         value = value,
@@ -359,6 +364,7 @@ private fun FieldWithError(
         singleLine = true,
         isError = error != null,
         supportingText = { if (error != null) Text(error) },
+        keyboardOptions = keyboardOptions,
         modifier = Modifier.fillMaxWidth()
     )
 }

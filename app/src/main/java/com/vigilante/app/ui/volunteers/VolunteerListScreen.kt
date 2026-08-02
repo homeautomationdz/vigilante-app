@@ -52,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.core.Validation
 import com.vigilante.app.data.local.VolunteerFilter
@@ -343,10 +344,14 @@ private fun FilterSheet(
                 Checkbox(checked = hasPhotoOnly, onCheckedChange = { hasPhotoOnly = it })
                 Text("مع صورة فقط", style = MaterialTheme.typography.bodyLarge)
             }
+            val sortOptions = VolunteerSort.entries.filter {
+                BuildConfig.ATTENDANCE_ENABLED ||
+                    (it != VolunteerSort.MOST_ATTENDANCE && it != VolunteerSort.LEAST_ATTENDANCE)
+            }
             DropdownField(
                 label = stringResource(R.string.sort),
                 selected = sortLabels[sort] ?: "",
-                options = VolunteerSort.entries.map { sortLabels[it] ?: it.name },
+                options = sortOptions.map { sortLabels[it] ?: it.name },
                 onSelected = { label ->
                     sort = sortLabels.entries.firstOrNull { it.value == label }?.key
                         ?: VolunteerSort.NAME
