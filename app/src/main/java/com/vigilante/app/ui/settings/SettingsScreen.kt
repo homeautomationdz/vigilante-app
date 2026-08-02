@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -65,6 +66,7 @@ fun SettingsScreen(
     onOpenAuditLog: () -> Unit,
     onOpenRecycleBin: () -> Unit,
     onOpenSystemHealth: () -> Unit,
+    onOpenPlaces: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -290,6 +292,14 @@ fun SettingsScreen(
                             stringResource(R.string.recycle_bin),
                             Icons.Filled.Delete,
                             onOpenRecycleBin
+                        )
+                        HorizontalDivider()
+                    }
+                    if (viewModel.canManagePlaces()) {
+                        LinkRow(
+                            "إدارة الأماكن",
+                            Icons.Filled.Place,
+                            onOpenPlaces
                         )
                         HorizontalDivider()
                     }

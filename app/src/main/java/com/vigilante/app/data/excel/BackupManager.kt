@@ -17,15 +17,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Where a manual backup ended up (user request: always show the location).
+ * Where a manual backup ended up (user request: always show the location and
+ * let the user pick where an external copy goes).
  * [internalPath] is the app-storage location shown to the user;
- * [downloadsPath] is set when an encrypted copy was also placed in the
- * phone's public Downloads folder (requires the Excel password setting).
+ * [protectedFile] is an ENCRYPTED copy ready for the system "save as" dialog
+ * (null when the Excel password setting is missing).
  */
 data class ManualBackupOutcome(
     val record: BackupRecord,
     val internalPath: String,
-    val downloadsPath: String?
+    val protectedFile: File?
 )
 
 /**
@@ -83,23 +84,19 @@ class BackupManager @Inject constructor(
         "Android/data/com.vigilante.app/files/Vigilante/Backup/${record.fileName}"
 
     /**
-     * Manual backup (user request): also drops an ENCRYPTED copy into the
-     * phone's Downloads folder when the Excel password is configured, and
-     * always reports exactly where the file(s) were saved.
+     * Manual backup (user request): prepares an ENCRYPTED copy when the Excel
+     * password is configured; the UI then opens the system "save as" dialog so
+     * the user chooses exactly where it goes, and always shows the location.
      */
     suspend fun createManual(appVersion: String): ManualBackupOutcome {
         val record = create(reason = "MANUAL", appVersion = appVersion)
         val internal = backupFile(record)
         val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
-        val downloadsPath = if (password != null) {
-            val encrypted = File(folders.backup, record.fileName + ".enc.tmp")
-            try {
-                ExcelCrypto.encrypt(internal, encrypted, password)
-                downloads.write(encrypted, record.fileName)
-            } finally {
-                encrypted.delete()
-            }
+        val protectedFile = if (password != null) {
+            val encrypted = File(folders.backup, "protected_" + record.fileName)
+            ExcelCrypto.encrypt(internal, encrypted, password)
+            encrypted
         } else null
-        return ManualBackupOutcome(record, internalPathOf(record), downloadsPath)
+        return ManualBackupOutcome(record, internalPathOf(record), protectedFile)
     }
 }

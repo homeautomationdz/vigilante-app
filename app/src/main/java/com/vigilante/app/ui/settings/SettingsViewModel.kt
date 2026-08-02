@@ -54,6 +54,9 @@ class SettingsViewModel @Inject constructor(
 
     fun canViewAuditLog(): Boolean = session.has(Permission.VIEW_AUDIT_LOG)
 
+    /** الأماكن list editing is gated by the same settings permission the repository checks. */
+    fun canManagePlaces(): Boolean = session.has(Permission.MANAGE_SETTINGS)
+
     fun canSeeRecycleBin(): Boolean = isSuperAdmin()
 
     private fun load() {

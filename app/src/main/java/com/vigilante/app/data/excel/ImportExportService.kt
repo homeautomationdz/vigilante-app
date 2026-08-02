@@ -18,8 +18,12 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Result of an export: the internal encrypted file + its Downloads location. */
-data class ExportOutcome(val file: File, val downloadsPath: String)
+/**
+ * Result of an export: the internal encrypted file + suggested display name.
+ * The UI asks the user WHERE to save it (system save dialog) and copies
+ * [file] to the chosen location.
+ */
+data class ExportOutcome(val file: File, val fileName: String)
 
 /**
  * Orchestrates the 9-step import flow (SRS ch. 50):
@@ -178,14 +182,13 @@ class ImportExportService @Inject constructor(
         } finally {
             plain.delete()
         }
-        val downloadsPath = downloads.write(target, name)
         db.withTransaction {
             audit.log(
                 session.require().admin.username, AuditAction.EXPORT_EXCEL,
-                "تصدير مشفر: $name → مجلد التنزيلات"
+                "تصدير مشفر: $name"
             )
         }
-        ExportOutcome(target, downloadsPath)
+        ExportOutcome(target, name)
     }
 
     /** Rewrites the official master file (called after every mutating flow). */

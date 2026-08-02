@@ -8,6 +8,7 @@ import com.vigilante.app.data.local.dao.AttendanceDao
 import com.vigilante.app.data.local.dao.AuditLogDao
 import com.vigilante.app.data.local.dao.BackupDao
 import com.vigilante.app.data.local.dao.IdCounterDao
+import com.vigilante.app.data.local.dao.PlacesDao
 import com.vigilante.app.data.local.dao.RecycleBinDao
 import com.vigilante.app.data.local.dao.SettingsDao
 import com.vigilante.app.data.local.dao.TagDao
@@ -17,7 +18,9 @@ import com.vigilante.app.data.local.entity.AppSetting
 import com.vigilante.app.data.local.entity.Attendance
 import com.vigilante.app.data.local.entity.AuditLog
 import com.vigilante.app.data.local.entity.BackupRecord
+import com.vigilante.app.data.local.entity.District
 import com.vigilante.app.data.local.entity.IdCounter
+import com.vigilante.app.data.local.entity.Municipality
 import com.vigilante.app.data.local.entity.LoginAttemptState
 import com.vigilante.app.data.local.entity.RecycleBinEntry
 import com.vigilante.app.data.local.entity.Tag
@@ -36,9 +39,9 @@ import com.vigilante.app.data.local.entity.VolunteerTag
         Volunteer::class, Attendance::class, Admin::class, AuditLog::class,
         AppSetting::class, Tag::class, VolunteerTag::class,
         RecycleBinEntry::class, BackupRecord::class, IdCounter::class,
-        LoginAttemptState::class
+        LoginAttemptState::class, Municipality::class, District::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -52,4 +55,5 @@ abstract class VigilanteDatabase : RoomDatabase() {
     abstract fun recycleBinDao(): RecycleBinDao
     abstract fun backupDao(): BackupDao
     abstract fun idCounterDao(): IdCounterDao
+    abstract fun placesDao(): PlacesDao
 }

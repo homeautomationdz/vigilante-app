@@ -1,6 +1,8 @@
 package com.vigilante.app.ui.backup
 
-import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,19 +36,26 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 import com.vigilante.app.ui.components.EmptyState
 import com.vigilante.app.ui.components.SectionHeader
 import com.vigilante.app.ui.components.VigilanteTopBar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.format.DateTimeFormatter
 
 private val dateTimeFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+
+private const val EXCEL_MIME =
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 @Composable
 fun BackupScreen(
@@ -57,10 +66,11 @@ fun BackupScreen(
     val backups by viewModel.backups.collectAsState()
     val message by viewModel.message.collectAsState()
     val busy by viewModel.busy.collectAsState()
-    val exportedFile by viewModel.exportedFile.collectAsState()
+    val exportOutcome by viewModel.exportOutcome.collectAsState()
     val backupOutcome by viewModel.backupOutcome.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(message) {
         message?.let {
@@ -69,18 +79,61 @@ fun BackupScreen(
         }
     }
 
-    LaunchedEffect(exportedFile) {
-        val file = exportedFile ?: return@LaunchedEffect
-        runCatching {
-            val uri = FileProvider.getUriForFile(context, "com.vigilante.app.fileprovider", file)
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    /** Copies [source] to the user-picked document [uri]; posts [onSaved] or a fallback message. */
+    fun copyToPickedLocation(source: File, uri: Uri, onSaved: String, onFailed: String) {
+        scope.launch {
+            val copied = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        source.inputStream().use { it.copyTo(out) }
+                    } ?: error("تعذر فتح الوجهة المختارة")
+                }
             }
-            context.startActivity(Intent.createChooser(share, "مشاركة ملف التصدير"))
+            viewModel.postMessage(if (copied.isSuccess) onSaved else onFailed)
         }
-        viewModel.consumeExportedFile()
+    }
+
+    // Export: system "save as" dialog so the user picks WHERE the encrypted file goes.
+    val exportSaveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(EXCEL_MIME)
+    ) { uri ->
+        val outcome = viewModel.exportOutcome.value ?: return@rememberLauncherForActivityResult
+        viewModel.consumeExportOutcome()
+        if (uri == null) {
+            viewModel.postMessage(
+                "أُلغي الحفظ — الملف موجود داخل التطبيق في Vigilante/Export/${outcome.fileName}"
+            )
+        } else {
+            copyToPickedLocation(
+                source = outcome.file,
+                uri = uri,
+                onSaved = "تم حفظ الملف المشفر في المكان الذي اخترته",
+                onFailed = "تعذر الحفظ في المكان المختار — الملف موجود داخل التطبيق في " +
+                    "Vigilante/Export/${outcome.fileName}"
+            )
+        }
+    }
+
+    LaunchedEffect(exportOutcome) {
+        exportOutcome?.let { exportSaveLauncher.launch(it.fileName) }
+    }
+
+    // Manual backup: same dialog, seeded with the backup file name.
+    val backupSaveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(EXCEL_MIME)
+    ) { uri ->
+        val outcome = viewModel.backupOutcome.value ?: return@rememberLauncherForActivityResult
+        val protectedFile = outcome.protectedFile ?: return@rememberLauncherForActivityResult
+        if (uri != null) {
+            viewModel.dismissBackupOutcome()
+            copyToPickedLocation(
+                source = protectedFile,
+                uri = uri,
+                onSaved = "تم حفظ النسخة المشفرة في المكان الذي اخترته",
+                onFailed = "تعذر الحفظ في المكان المختار — توجد نسخة داخلية في ${outcome.internalPath}"
+            )
+        }
+        // On cancel the dialog stays open so the user can retry or dismiss.
     }
 
     backupOutcome?.let { outcome ->
@@ -89,18 +142,31 @@ fun BackupScreen(
             title = { Text("تم إنشاء النسخة الاحتياطية") },
             text = {
                 Text(
-                    if (outcome.downloadsPath != null) {
-                        "تم حفظ نسخة مشفرة في مجلد التنزيلات:\n${outcome.downloadsPath}" +
-                            "\n\nوتوجد نسخة داخلية في:\n${outcome.internalPath}"
+                    if (outcome.protectedFile != null) {
+                        "توجد نسخة داخلية في:\n${outcome.internalPath}" +
+                            "\n\nيمكنك أيضًا حفظ نسخة مشفرة في المكان الذي تختاره."
                     } else {
                         "تم الحفظ داخل مجلد التطبيق:\n${outcome.internalPath}" +
-                            "\n\nلحفظ نسخة إضافية في مجلد التنزيلات، حدد أولًا كلمة مرور ملفات Excel من الإعدادات."
+                            "\n\nلحفظ نسخة مشفرة خارج التطبيق، حدد أولًا كلمة مرور ملفات Excel من الإعدادات."
                     }
                 )
             },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissBackupOutcome) {
-                    Text("موافق")
+                if (outcome.protectedFile != null) {
+                    TextButton(onClick = { backupSaveLauncher.launch(outcome.record.fileName) }) {
+                        Text("اختيار مكان الحفظ…")
+                    }
+                } else {
+                    TextButton(onClick = viewModel::dismissBackupOutcome) {
+                        Text("موافق")
+                    }
+                }
+            },
+            dismissButton = {
+                if (outcome.protectedFile != null) {
+                    TextButton(onClick = viewModel::dismissBackupOutcome) {
+                        Text("موافق")
+                    }
                 }
             }
         )

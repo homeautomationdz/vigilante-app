@@ -18,6 +18,7 @@ import com.vigilante.app.ui.login.FirstRunScreen
 import com.vigilante.app.ui.login.LoginScreen
 import com.vigilante.app.ui.login.SplashContent
 import com.vigilante.app.ui.settings.AuditLogScreen
+import com.vigilante.app.ui.settings.PlacesScreen
 import com.vigilante.app.ui.settings.RecycleBinScreen
 import com.vigilante.app.ui.settings.SettingsScreen
 import com.vigilante.app.ui.settings.SystemHealthScreen
@@ -46,6 +47,7 @@ sealed class Route(val route: String) {
     data object Settings : Route("settings")
     data object Backup : Route("backup")
     data object AuditLog : Route("audit_log")
+    data object Places : Route("places")
     data object RecycleBin : Route("recycle_bin")
     data object SystemHealth : Route("system_health")
     data object ImportFlow : Route("import_flow")
@@ -158,7 +160,8 @@ fun VigilanteNavHost(
                 onBack = { navController.popBackStack() },
                 onOpenAuditLog = { navController.navigate(Route.AuditLog.route) },
                 onOpenRecycleBin = { navController.navigate(Route.RecycleBin.route) },
-                onOpenSystemHealth = { navController.navigate(Route.SystemHealth.route) }
+                onOpenSystemHealth = { navController.navigate(Route.SystemHealth.route) },
+                onOpenPlaces = { navController.navigate(Route.Places.route) }
             )
         }
 
@@ -171,6 +174,10 @@ fun VigilanteNavHost(
 
         composable(Route.AuditLog.route) {
             AuditLogScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.Places.route) {
+            PlacesScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Route.RecycleBin.route) {

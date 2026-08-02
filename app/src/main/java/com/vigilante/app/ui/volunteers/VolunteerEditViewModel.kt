@@ -6,17 +6,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vigilante.app.core.Validation
 import com.vigilante.app.data.files.PhotoStore
+import com.vigilante.app.data.local.entity.District
+import com.vigilante.app.data.local.entity.Municipality
 import com.vigilante.app.data.local.entity.Volunteer
+import com.vigilante.app.data.repository.PlacesRepository
 import com.vigilante.app.data.repository.VolunteerDraft
 import com.vigilante.app.data.repository.VolunteerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.ResolverStyle
 import javax.inject.Inject
 
 data class EditFormState(
@@ -26,7 +38,8 @@ data class EditFormState(
     val firstName: String = "",
     val lastName: String = "",
     val fatherName: String = "",
-    val birthDate: LocalDate? = null,
+    /** Birth date typed as digits only (ddMMyyyy); slashes are added visually. */
+    val birthDateInput: String = "",
     val joinDate: LocalDate = LocalDate.now(),
     val municipality: String = "",
     val district: String = "",
@@ -45,17 +58,34 @@ data class EditFormState(
     val message: String? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class VolunteerEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: VolunteerRepository,
-    private val photoStore: PhotoStore
+    private val photoStore: PhotoStore,
+    placesRepository: PlacesRepository
 ) : ViewModel() {
 
     private val editId: String? = savedStateHandle.get<String>("id")?.takeIf { it.isNotBlank() }
 
     private val _state = MutableStateFlow(EditFormState(isEdit = editId != null))
     val state: StateFlow<EditFormState> = _state
+
+    /** Admin-managed بلديات list for the optional dropdown. */
+    val municipalities: StateFlow<List<Municipality>> = placesRepository.municipalities()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Districts of the currently selected municipality (empty when none matches). */
+    val districts: StateFlow<List<District>> =
+        combine(municipalities, _state) { list, s ->
+            list.firstOrNull { it.name == s.municipality }?.id
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { id ->
+                if (id == null) flowOf(emptyList()) else placesRepository.districtsOf(id)
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private var original: Volunteer? = null
 
@@ -75,7 +105,7 @@ class VolunteerEditViewModel @Inject constructor(
                         firstName = v.firstName,
                         lastName = v.lastName,
                         fatherName = v.fatherName,
-                        birthDate = v.birthDate,
+                        birthDateInput = v.birthDate?.format(birthDigitsFmt).orEmpty(),
                         joinDate = v.joinDate,
                         municipality = v.municipality.orEmpty(),
                         district = v.district.orEmpty(),
@@ -116,6 +146,14 @@ class VolunteerEditViewModel @Inject constructor(
         _state.value = _state.value.copy(photoUri = null, photoRemoved = true)
     }
 
+    /** Parses the typed ddMMyyyy digits into a date; null when empty or invalid. */
+    private fun parsedBirthDate(s: EditFormState): LocalDate? {
+        val digits = s.birthDateInput
+        if (digits.length != 8) return null
+        val text = "${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4)}"
+        return runCatching { LocalDate.parse(text, birthParseFmt) }.getOrNull()
+    }
+
     private fun validate(s: EditFormState): Map<String, String> {
         val errors = mutableMapOf<String, String>()
         val today = LocalDate.now()
@@ -133,11 +171,14 @@ class VolunteerEditViewModel @Inject constructor(
         if (s.bloodGroup.isNotBlank() && !Validation.isValidBloodGroup(s.bloodGroup)) {
             errors["bloodGroup"] = "زمرة دم غير صالحة"
         }
-        when (Validation.validateBirthDate(s.birthDate, today)) {
+        val birth = parsedBirthDate(s)
+        if (s.birthDateInput.isNotBlank() && birth == null) {
+            errors["birthDate"] = "تاريخ غير صالح"
+        } else when (Validation.validateBirthDate(birth, today)) {
             is Validation.DateError.InFuture -> errors["birthDate"] = "لا يسمح بتاريخ في المستقبل"
             else -> {}
         }
-        when (Validation.validateJoinDate(s.joinDate, s.birthDate, today)) {
+        when (Validation.validateJoinDate(s.joinDate, birth, today)) {
             is Validation.DateError.InFuture -> errors["joinDate"] = "لا يسمح بتاريخ في المستقبل"
             is Validation.DateError.JoinBeforeBirth ->
                 errors["joinDate"] = "تاريخ الانضمام لا يمكن أن يكون قبل تاريخ الميلاد"
@@ -181,7 +222,7 @@ class VolunteerEditViewModel @Inject constructor(
             firstName = s.firstName,
             lastName = s.lastName,
             fatherName = s.fatherName,
-            birthDate = s.birthDate,
+            birthDate = parsedBirthDate(s),
             joinDate = s.joinDate,
             municipality = s.municipality,
             district = s.district,
@@ -238,7 +279,7 @@ class VolunteerEditViewModel @Inject constructor(
             firstName = Validation.normalizeName(s.firstName),
             lastName = Validation.normalizeName(s.lastName),
             fatherName = Validation.normalizeName(s.fatherName),
-            birthDate = s.birthDate,
+            birthDate = parsedBirthDate(s),
             joinDate = s.joinDate,
             municipality = s.municipality.trim().takeIf { it.isNotBlank() },
             district = s.district.trim().takeIf { it.isNotBlank() },
@@ -260,5 +301,14 @@ class VolunteerEditViewModel @Inject constructor(
 
     fun clearMessage() {
         _state.value = _state.value.copy(message = null)
+    }
+
+    private companion object {
+        /** Formats a stored date back into the digits-only input (ddMMyyyy). */
+        val birthDigitsFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("ddMMuuuu")
+
+        /** Strict d/M/uuuu parsing so 31/02/2000 or year 10000 never slips through. */
+        val birthParseFmt: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("d/M/uuuu").withResolverStyle(ResolverStyle.STRICT)
     }
 }

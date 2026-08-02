@@ -56,7 +56,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -70,6 +74,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
+/** "No selection" entry shown first in the municipality/district dropdowns. */
+private const val NO_PLACE = "— بدون —"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun VolunteerEditScreen(
@@ -77,8 +84,9 @@ fun VolunteerEditScreen(
     viewModel: VolunteerEditViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val municipalities by viewModel.municipalities.collectAsState()
+    val districts by viewModel.districts.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showBirthPicker by remember { mutableStateOf(false) }
     var showJoinPicker by remember { mutableStateOf(false) }
     var tagInput by remember { mutableStateOf("") }
 
@@ -203,11 +211,10 @@ fun VolunteerEditScreen(
                 error = state.fieldErrors["fatherName"]
             )
 
-            DateField(
-                label = stringResource(R.string.birth_date),
-                value = state.birthDate?.toString() ?: "",
-                error = state.fieldErrors["birthDate"],
-                onClick = { showBirthPicker = true }
+            BirthDateField(
+                value = state.birthDateInput,
+                onValue = { digits -> viewModel.update { it.copy(birthDateInput = digits) } },
+                error = state.fieldErrors["birthDate"]
             )
             DateField(
                 label = stringResource(R.string.join_date),
@@ -216,17 +223,34 @@ fun VolunteerEditScreen(
                 onClick = { showJoinPicker = true }
             )
 
-            FieldWithError(
-                value = state.municipality,
-                onValue = { value -> viewModel.update { it.copy(municipality = value) } },
-                label = stringResource(R.string.municipality),
-                error = null
-            )
-            FieldWithError(
-                value = state.district,
-                onValue = { value -> viewModel.update { it.copy(district = value) } },
+            Column {
+                DropdownField(
+                    label = stringResource(R.string.municipality),
+                    selected = state.municipality.ifBlank { NO_PLACE },
+                    options = listOf(NO_PLACE) + municipalities.map { it.name },
+                    onSelected = { picked ->
+                        val name = if (picked == NO_PLACE) "" else picked
+                        viewModel.update {
+                            if (name == it.municipality) it
+                            else it.copy(municipality = name, district = "")
+                        }
+                    }
+                )
+                Text(
+                    "تُدار القائمة من الإعدادات ← إدارة الأماكن",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
+            }
+            DropdownField(
                 label = stringResource(R.string.district),
-                error = null
+                selected = state.district.ifBlank { NO_PLACE },
+                options = listOf(NO_PLACE) + districts.map { it.name },
+                onSelected = { picked ->
+                    viewModel.update { it.copy(district = if (picked == NO_PLACE) "" else picked) }
+                },
+                enabled = state.municipality.isNotBlank()
             )
 
             DropdownField(
@@ -240,14 +264,22 @@ fun VolunteerEditScreen(
 
             FieldWithError(
                 value = state.phone1,
-                onValue = { value -> viewModel.update { it.copy(phone1 = value.filter(Char::isDigit)) } },
+                onValue = { value ->
+                    if (value.length <= 10 && value.all(Char::isDigit)) {
+                        viewModel.update { it.copy(phone1 = value) }
+                    }
+                },
                 label = stringResource(R.string.phone1),
                 error = state.fieldErrors["phone1"],
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             FieldWithError(
                 value = state.phone2,
-                onValue = { value -> viewModel.update { it.copy(phone2 = value.filter(Char::isDigit)) } },
+                onValue = { value ->
+                    if (value.length <= 10 && value.all(Char::isDigit)) {
+                        viewModel.update { it.copy(phone2 = value) }
+                    }
+                },
                 label = stringResource(R.string.phone2),
                 error = state.fieldErrors["phone2"],
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -315,16 +347,6 @@ fun VolunteerEditScreen(
             Spacer(Modifier.height(24.dp))
         }
 
-        if (showBirthPicker) {
-            AppDatePicker(
-                initial = state.birthDate,
-                onPicked = { picked ->
-                    viewModel.update { it.copy(birthDate = picked) }
-                    showBirthPicker = false
-                },
-                onDismiss = { showBirthPicker = false }
-            )
-        }
         if (showJoinPicker) {
             AppDatePicker(
                 initial = state.joinDate,
@@ -366,6 +388,55 @@ private fun FieldWithError(
         supportingText = { if (error != null) Text(error) },
         keyboardOptions = keyboardOptions,
         modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * Birth date typed directly (user request: no calendar). The state keeps
+ * digits only (ddMMyyyy, max 8); slashes are drawn by [dateSlashesTransformation].
+ */
+@Composable
+private fun BirthDateField(
+    value: String,
+    onValue: (String) -> Unit,
+    error: String?
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { new ->
+            onValue(new.filter(Char::isDigit).take(8))
+        },
+        label = { Text(stringResource(R.string.birth_date)) },
+        placeholder = { Text("يوم/شهر/سنة — مثال: 25/03/1990") },
+        singleLine = true,
+        isError = error != null,
+        supportingText = { if (error != null) Text(error) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        visualTransformation = dateSlashesTransformation,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/** Shows ddMMyyyy digits as dd/mm/yyyy while the state stays digits-only. */
+private val dateSlashesTransformation = VisualTransformation { text ->
+    val digits = text.text
+    val formatted = buildString {
+        digits.forEachIndexed { index, c ->
+            append(c)
+            if (index == 1 || index == 3) append('/')
+        }
+    }
+    TransformedText(
+        AnnotatedString(formatted),
+        object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int =
+                (offset + (if (offset >= 2) 1 else 0) + (if (offset >= 4) 1 else 0))
+                    .coerceIn(0, formatted.length)
+
+            override fun transformedToOriginal(offset: Int): Int =
+                (offset - (if (offset > 2) 1 else 0) - (if (offset > 5) 1 else 0))
+                    .coerceIn(0, digits.length)
+        }
     )
 }
 
