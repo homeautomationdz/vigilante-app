@@ -1,0 +1,199 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preFullDebugBuild UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateFullDebugBuildConfig
+> Task :app:generateFullDebugResValues FROM-CACHE
+> Task :app:checkFullDebugAarMetadata
+> Task :app:mapFullDebugSourceSetPaths
+> Task :app:generateFullDebugResources FROM-CACHE
+> Task :app:mergeFullDebugResources FROM-CACHE
+> Task :app:packageFullDebugResources FROM-CACHE
+> Task :app:parseFullDebugLocalResources FROM-CACHE
+> Task :app:createFullDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksFullDebug FROM-CACHE
+> Task :app:processFullDebugMainManifest
+> Task :app:processFullDebugManifest
+> Task :app:javaPreCompileFullDebug FROM-CACHE
+> Task :app:mergeFullDebugShaders
+> Task :app:compileFullDebugShaders NO-SOURCE
+> Task :app:generateFullDebugAssets UP-TO-DATE
+> Task :app:mergeFullDebugAssets
+> Task :app:processFullDebugManifestForPackage
+> Task :app:preFullDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileFullDebugUnitTest FROM-CACHE
+> Task :app:buildKotlinToolingMetadata
+> Task :app:preFullReleaseBuild UP-TO-DATE
+> Task :app:generateFullReleaseBuildConfig
+> Task :app:generateFullReleaseResValues FROM-CACHE
+> Task :app:checkFullReleaseAarMetadata
+> Task :app:mapFullReleaseSourceSetPaths
+> Task :app:generateFullReleaseResources FROM-CACHE
+> Task :app:mergeFullReleaseResources FROM-CACHE
+> Task :app:packageFullReleaseResources FROM-CACHE
+> Task :app:parseFullReleaseLocalResources FROM-CACHE
+> Task :app:createFullReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksFullRelease FROM-CACHE
+> Task :app:processFullReleaseMainManifest
+> Task :app:processFullReleaseManifest
+> Task :app:javaPreCompileFullRelease FROM-CACHE
+> Task :app:extractProguardFiles
+> Task :app:processFullReleaseManifestForPackage
+> Task :app:processFullDebugResources
+> Task :app:processFullReleaseResources
+> Task :app:packageFullDebugUnitTestForUnitTest
+> Task :app:generateFullDebugUnitTestConfig
+> Task :app:mergeFullReleaseJniLibFolders
+> Task :app:mergeFullReleaseNativeLibs
+> Task :app:mergeFullReleaseArtProfile
+
+> Task :app:stripFullReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
+
+> Task :app:expandFullReleaseL8ArtProfileWildcards FROM-CACHE
+> Task :app:extractFullReleaseNativeSymbolTables FROM-CACHE
+> Task :app:mergeFullReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:mergeFullReleaseStartupProfile
+> Task :app:mergeFullReleaseShaders
+> Task :app:compileFullReleaseShaders NO-SOURCE
+> Task :app:generateFullReleaseAssets UP-TO-DATE
+> Task :app:mergeFullReleaseAssets
+> Task :app:compressFullReleaseAssets FROM-CACHE
+> Task :app:checkFullReleaseDuplicateClasses
+> Task :app:extractFullReleaseVersionControlInfo
+> Task :app:collectFullReleaseDependencies
+> Task :app:sdkFullReleaseDependencyData
+> Task :app:validateSigningFullRelease
+> Task :app:writeFullReleaseAppMetadata
+> Task :app:writeFullReleaseSigningConfigVersions
+> Task :app:convertLinkedResourcesToProtoFullRelease
+> Task :app:preStatsReleaseBuild UP-TO-DATE
+> Task :app:generateStatsReleaseBuildConfig
+> Task :app:generateStatsReleaseResValues FROM-CACHE
+> Task :app:checkStatsReleaseAarMetadata
+> Task :app:mapStatsReleaseSourceSetPaths
+> Task :app:generateStatsReleaseResources FROM-CACHE
+> Task :app:mergeStatsReleaseResources FROM-CACHE
+> Task :app:packageStatsReleaseResources FROM-CACHE
+> Task :app:parseStatsReleaseLocalResources FROM-CACHE
+> Task :app:createStatsReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksStatsRelease FROM-CACHE
+> Task :app:processStatsReleaseMainManifest
+> Task :app:processStatsReleaseManifest
+> Task :app:javaPreCompileStatsRelease FROM-CACHE
+> Task :app:processStatsReleaseManifestForPackage
+> Task :app:mergeStatsReleaseJniLibFolders
+> Task :app:mergeStatsReleaseNativeLibs
+
+> Task :app:stripStatsReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
+
+> Task :app:extractStatsReleaseNativeSymbolTables FROM-CACHE
+> Task :app:mergeStatsReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:mergeStatsReleaseArtProfile
+> Task :app:expandStatsReleaseL8ArtProfileWildcards FROM-CACHE
+> Task :app:checkStatsReleaseDuplicateClasses
+> Task :app:mergeStatsReleaseStartupProfile
+> Task :app:mergeStatsReleaseShaders
+> Task :app:compileStatsReleaseShaders NO-SOURCE
+> Task :app:generateStatsReleaseAssets UP-TO-DATE
+> Task :app:mergeStatsReleaseAssets
+> Task :app:compressStatsReleaseAssets FROM-CACHE
+> Task :app:extractStatsReleaseVersionControlInfo
+> Task :app:processStatsReleaseResources
+> Task :app:collectStatsReleaseDependencies
+> Task :app:convertLinkedResourcesToProtoStatsRelease
+> Task :app:sdkStatsReleaseDependencyData
+> Task :app:validateSigningStatsRelease
+> Task :app:writeStatsReleaseAppMetadata
+> Task :app:writeStatsReleaseSigningConfigVersions
+
+> Task :app:kspFullDebugKotlin
+w: [ksp] /home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/data/local/VigilanteDatabase.kt:48: Schema export directory was not provided to the annotation processor so Room cannot export the schema. You can either provide `room.schemaLocation` annotation processor argument by applying the Room Gradle plugin (id 'androidx.room') OR set exportSchema to false.
+
+> Task :app:kspFullReleaseKotlin
+w: [ksp] /home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/data/local/VigilanteDatabase.kt:48: Schema export directory was not provided to the annotation processor so Room cannot export the schema. You can either provide `room.schemaLocation` annotation processor argument by applying the Room Gradle plugin (id 'androidx.room') OR set exportSchema to false.
+
+> Task :app:kspStatsReleaseKotlin
+w: [ksp] /home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/data/local/VigilanteDatabase.kt:48: Schema export directory was not provided to the annotation processor so Room cannot export the schema. You can either provide `room.schemaLocation` annotation processor argument by applying the Room Gradle plugin (id 'androidx.room') OR set exportSchema to false.
+
+> Task :app:compileFullReleaseKotlin
+> Task :app:compileFullDebugKotlin
+> Task :app:compileStatsReleaseKotlin
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/attendance/AttendanceScreen.kt:110:37 'val Icons.Filled.FactCheck: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.FactCheck.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerDetailScreen.kt:215:82 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerListScreen.kt:388:18 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+
+> Task :app:compileFullReleaseKotlin
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/attendance/AttendanceScreen.kt:110:37 'val Icons.Filled.FactCheck: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.FactCheck.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerDetailScreen.kt:215:82 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerListScreen.kt:388:18 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+
+> Task :app:compileFullDebugKotlin
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/attendance/AttendanceScreen.kt:110:37 'val Icons.Filled.FactCheck: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.FactCheck.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerDetailScreen.kt:215:82 'val Icons.Filled.Chat: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Chat.
+w: file:///home/runner/work/vigilante-app/vigilante-app/app/src/main/java/com/vigilante/app/ui/volunteers/VolunteerListScreen.kt:388:18 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+
+> Task :app:compileFullReleaseJavaWithJavac
+> Task :app:compileFullDebugJavaWithJavac
+> Task :app:hiltAggregateDepsFullDebug FROM-CACHE
+> Task :app:hiltJavaCompileFullDebug
+> Task :app:processFullDebugJavaRes
+> Task :app:hiltAggregateDepsFullRelease FROM-CACHE
+> Task :app:bundleFullDebugClassesToCompileJar
+> Task :app:transformFullDebugClassesWithAsm
+> Task :app:hiltJavaCompileFullRelease
+> Task :app:bundleFullDebugClassesToRuntimeJar
+> Task :app:generateFullReleaseLintVitalReportModel
+> Task :app:processFullReleaseJavaRes
+> Task :app:kspFullDebugUnitTestKotlin
+> Task :app:transformFullReleaseClassesWithAsm
+> Task :app:mergeFullReleaseJavaResource
+> Task :app:mergeFullReleaseGeneratedProguardFiles
+> Task :app:expandFullReleaseArtProfileWildcards
+> Task :app:compileFullDebugUnitTestKotlin
+> Task :app:compileStatsReleaseJavaWithJavac
+> Task :app:compileFullDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:hiltAggregateDepsFullDebugUnitTest FROM-CACHE
+> Task :app:hiltJavaCompileFullDebugUnitTest NO-SOURCE
+> Task :app:processFullDebugUnitTestJavaRes
+> Task :app:transformFullDebugUnitTestClassesWithAsm
+> Task :app:testFullDebugUnitTest
+> Task :app:hiltAggregateDepsStatsRelease FROM-CACHE
+> Task :app:hiltJavaCompileStatsRelease
+> Task :app:generateStatsReleaseLintVitalReportModel
+> Task :app:transformStatsReleaseClassesWithAsm
+> Task :app:expandStatsReleaseArtProfileWildcards
+> Task :app:mergeStatsReleaseGeneratedProguardFiles
+> Task :app:processStatsReleaseJavaRes
+> Task :app:mergeStatsReleaseJavaResource
+> Task :app:lintVitalAnalyzeFullRelease
+> Task :app:minifyFullReleaseWithR8
+> Task :app:lintVitalAnalyzeStatsRelease
+> Task :app:lintVitalReportFullRelease
+> Task :app:lintVitalReportStatsRelease
+> Task :app:lintVitalFullRelease
+> Task :app:lintVitalStatsRelease
+> Task :app:l8DexDesugarLibFullRelease
+> Task :app:compileFullReleaseArtProfile
+> Task :app:shrinkFullReleaseRes
+> Task :app:convertShrunkResourcesToBinaryFullRelease
+> Task :app:optimizeFullReleaseResources
+> Task :app:packageFullRelease
+> Task :app:createFullReleaseApkListingFileRedirect
+> Task :app:assembleFullRelease
+> Task :app:minifyStatsReleaseWithR8
+> Task :app:l8DexDesugarLibStatsRelease
+> Task :app:compileStatsReleaseArtProfile
+> Task :app:shrinkStatsReleaseRes
+> Task :app:convertShrunkResourcesToBinaryStatsRelease
+> Task :app:optimizeStatsReleaseResources
+> Task :app:packageStatsRelease
+> Task :app:createStatsReleaseApkListingFileRedirect
+> Task :app:assembleStatsRelease
+> Task :app:assembleRelease
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1785775365476.json
+
+BUILD SUCCESSFUL in 5m 36s
+147 actionable tasks: 115 executed, 32 from cache
