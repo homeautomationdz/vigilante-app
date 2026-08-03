@@ -1,27 +1,29 @@
 package com.vigilante.app.ui.home
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,20 +35,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.data.local.entity.Permission
 import com.vigilante.app.ui.components.ConfirmDialog
+import com.vigilante.app.ui.components.HeaderPanel
+import com.vigilante.app.ui.components.MenuTile
 import com.vigilante.app.ui.components.StatCard
-import com.vigilante.app.ui.components.VigilanteTopBar
 import com.vigilante.app.ui.navigation.Route
+import com.vigilante.app.ui.theme.AppColors
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -55,6 +57,12 @@ private data class MenuEntry(
     val label: String,
     val icon: ImageVector,
     val route: String
+)
+
+private data class HomeStat(
+    val label: String,
+    val value: String,
+    val icon: ImageVector
 )
 
 @Composable
@@ -79,13 +87,13 @@ fun HomeScreen(
             if (BuildConfig.ATTENDANCE_ENABLED) {
                 add(MenuEntry("الحضور", Icons.Filled.HowToReg, Route.Attendance.route))
             }
-            add(MenuEntry("الإحصائيات", Icons.Filled.BarChart, Route.Stats.route))
-            add(MenuEntry("الأرشيف", Icons.Filled.Archive, Route.Archive.route))
+            add(MenuEntry("الإحصائيات", Icons.Filled.Insights, Route.Stats.route))
+            add(MenuEntry("الأرشيف", Icons.Filled.Inventory2, Route.Archive.route))
             if (viewModel.has(Permission.MANAGE_ADMINS)) {
-                add(MenuEntry("المشرفون", Icons.Filled.ManageAccounts, Route.Admins.route))
+                add(MenuEntry("المشرفون", Icons.Filled.AdminPanelSettings, Route.Admins.route))
             }
             add(MenuEntry("الإعدادات", Icons.Filled.Settings, Route.Settings.route))
-            add(MenuEntry("النسخ الاحتياطي", Icons.Filled.Save, Route.Backup.route))
+            add(MenuEntry("النسخ الاحتياطي", Icons.Filled.Backup, Route.Backup.route))
         }
     }
 
@@ -101,125 +109,111 @@ fun HomeScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            VigilanteTopBar(
-                title = stringResource(R.string.app_label),
-                actions = {
-                    IconButton(onClick = { showLogoutConfirm = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "تسجيل الخروج")
-                    }
-                }
+    val c = AppColors.current
+    val stats = buildList {
+        add(
+            HomeStat(
+                stringResource(R.string.home_volunteers_count),
+                activeCount.toString(),
+                Icons.Filled.Groups
+            )
+        )
+        add(
+            HomeStat(
+                stringResource(R.string.home_archived_count),
+                archivedCount.toString(),
+                Icons.Filled.Inventory2
+            )
+        )
+        if (BuildConfig.ATTENDANCE_ENABLED) {
+            add(
+                HomeStat(
+                    stringResource(R.string.home_attendance_today),
+                    attendanceToday.toString(),
+                    Icons.Filled.HowToReg
+                )
             )
         }
-    ) { padding ->
+        add(
+            HomeStat(
+                stringResource(R.string.home_joined_this_year),
+                joinedThisYear.toString(),
+                Icons.Filled.PersonAdd
+            )
+        )
+    }
+
+    val adminName = sessionState?.admin?.fullName ?: ""
+    val roleLabel =
+        if (sessionState?.admin?.role?.name == "SUPER_ADMIN") "مدير النظام" else "مشرف"
+
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Row(
+            // Navy behind the status bar so the header reads as one panel.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        sessionState?.admin?.fullName ?: "",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        if (sessionState?.admin?.role?.name == "SUPER_ADMIN") "مدير النظام" else "مشرف",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(today, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        time,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                    .background(c.headerStart)
+                    .statusBarsPadding()
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatCard(
-                    title = stringResource(R.string.home_volunteers_count),
-                    value = activeCount.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = stringResource(R.string.home_archived_count),
-                    value = archivedCount.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (BuildConfig.ATTENDANCE_ENABLED) {
-                    StatCard(
-                        title = stringResource(R.string.home_attendance_today),
-                        value = attendanceToday.toString(),
-                        modifier = Modifier.weight(1f)
-                    )
+            HeaderPanel(
+                title = stringResource(R.string.app_label),
+                subtitle = if (adminName.isBlank()) roleLabel else "$adminName · $roleLabel",
+                trailing = {
+                    IconButton(onClick = { showLogoutConfirm = true }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "تسجيل الخروج",
+                            tint = c.onHeader
+                        )
+                    }
+                },
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            "$today · $time",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.onHeaderMuted
+                        )
+                        stats.chunked(2).forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                row.forEach { stat ->
+                                    StatCard(
+                                        title = stat.label,
+                                        value = stat.value,
+                                        icon = stat.icon,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
-                StatCard(
-                    title = stringResource(R.string.home_joined_this_year),
-                    value = joinedThisYear.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            )
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(menu) { entry ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigate(entry.route) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 22.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                entry.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(36.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                entry.label,
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
+                    MenuTile(
+                        label = entry.label,
+                        icon = entry.icon,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onNavigate(entry.route) }
+                    )
                 }
             }
         }

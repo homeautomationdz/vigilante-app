@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,6 +41,8 @@ import com.vigilante.app.data.local.entity.District
 import com.vigilante.app.data.local.entity.Municipality
 import com.vigilante.app.ui.components.ConfirmDialog
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 
 /**
@@ -75,8 +76,9 @@ fun PlacesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
+            SectionHeader("البلديات")
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -86,13 +88,21 @@ fun PlacesScreen(
                     onValueChange = { newMunicipality = it },
                     label = { Text("إضافة بلدية") },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = {
-                    viewModel.addMunicipality(newMunicipality)
-                    newMunicipality = ""
-                }) {
-                    Icon(Icons.Filled.Add, contentDescription = "إضافة بلدية")
+                IconButton(
+                    onClick = {
+                        viewModel.addMunicipality(newMunicipality)
+                        newMunicipality = ""
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "إضافة بلدية",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
 
@@ -104,7 +114,7 @@ fun PlacesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp)
                 ) {
                     items(municipalities, key = { it.id }) { municipality ->
@@ -161,13 +171,13 @@ private fun MunicipalityCard(
     val districtsFlow = remember(municipality.id) { viewModel.districtsOf(municipality.id) }
     val districts by districtsFlow.collectAsState(initial = emptyList())
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    VCard(modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { expanded = !expanded }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -178,6 +188,7 @@ private fun MunicipalityCard(
                 Text(
                     municipality.name,
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 8.dp)
@@ -191,7 +202,7 @@ private fun MunicipalityCard(
                 }
             }
             if (expanded) {
-                HorizontalDivider()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                     if (districts.isEmpty()) {
                         Text(
@@ -209,6 +220,7 @@ private fun MunicipalityCard(
                             Text(
                                 district.name,
                                 style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { onDeleteDistrict(district) }) {
@@ -230,13 +242,21 @@ private fun MunicipalityCard(
                             onValueChange = { newDistrict = it },
                             label = { Text("إضافة حي") },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = {
-                            viewModel.addDistrict(municipality.id, newDistrict)
-                            newDistrict = ""
-                        }) {
-                            Icon(Icons.Filled.Add, contentDescription = "إضافة حي")
+                        IconButton(
+                            onClick = {
+                                viewModel.addDistrict(municipality.id, newDistrict)
+                                newDistrict = ""
+                            },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "إضافة حي",
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
                 }

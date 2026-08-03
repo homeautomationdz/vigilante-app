@@ -1,15 +1,22 @@
 package com.vigilante.app.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +31,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,8 +64,10 @@ import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import com.vigilante.app.ui.login.APP_VERSION
+import com.vigilante.app.ui.theme.AppColors
 
 @Composable
 fun SettingsScreen(
@@ -94,173 +103,190 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            SectionHeader("معلومات الجمعية")
-            Card {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = state.orgId,
-                        onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        label = { Text("معرف الجمعية (للقراءة فقط)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.orgName,
-                        onValueChange = { value -> viewModel.update { it.copy(orgName = value) } },
-                        label = { Text("اسم الجمعية") },
-                        enabled = viewModel.canManageSettings(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.orgPhone,
-                        onValueChange = { value -> viewModel.update { it.copy(orgPhone = value) } },
-                        label = { Text("هاتف الجمعية") },
-                        enabled = viewModel.canManageSettings(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.orgEmail,
-                        onValueChange = { value -> viewModel.update { it.copy(orgEmail = value) } },
-                        label = { Text("البريد الإلكتروني") },
-                        enabled = viewModel.canManageSettings(),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = state.orgAddress,
-                        onValueChange = { value -> viewModel.update { it.copy(orgAddress = value) } },
-                        label = { Text("العنوان") },
-                        enabled = viewModel.canManageSettings(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (viewModel.canManageSettings()) {
-                        Button(
-                            onClick = viewModel::saveOrganization,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(stringResource(R.string.save)) }
-                    }
+            SettingsSection("معلومات الجمعية") {
+                OutlinedTextField(
+                    value = state.orgId,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
+                    label = { Text("معرف الجمعية (للقراءة فقط)") },
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.orgName,
+                    onValueChange = { value -> viewModel.update { it.copy(orgName = value) } },
+                    label = { Text("اسم الجمعية") },
+                    enabled = viewModel.canManageSettings(),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.orgPhone,
+                    onValueChange = { value -> viewModel.update { it.copy(orgPhone = value) } },
+                    label = { Text("هاتف الجمعية") },
+                    enabled = viewModel.canManageSettings(),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.orgEmail,
+                    onValueChange = { value -> viewModel.update { it.copy(orgEmail = value) } },
+                    label = { Text("البريد الإلكتروني") },
+                    enabled = viewModel.canManageSettings(),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.orgAddress,
+                    onValueChange = { value -> viewModel.update { it.copy(orgAddress = value) } },
+                    label = { Text("العنوان") },
+                    enabled = viewModel.canManageSettings(),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (viewModel.canManageSettings()) {
+                    Button(
+                        onClick = viewModel::saveOrganization,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    ) { Text(stringResource(R.string.save)) }
                 }
             }
 
-            SectionHeader("الأمان")
-            Card {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            SettingsSection("الأمان") {
+                OutlinedButton(
+                    onClick = { showPasswordDialog = true },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { showPasswordDialog = true },
+                    Icon(
+                        Icons.Filled.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("تغيير كلمة المرور")
+                }
+                if (viewModel.canManageSettings()) {
+                    OutlinedTextField(
+                        value = state.lockSeconds,
+                        onValueChange = { value ->
+                            viewModel.update { it.copy(lockSeconds = value.filter(Char::isDigit)) }
+                        },
+                        label = { Text("مدة قفل تسجيل الدخول (ثوانٍ)") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Lock, contentDescription = null)
-                        Spacer(Modifier.padding(4.dp))
-                        Text("تغيير كلمة المرور")
-                    }
-                    if (viewModel.canManageSettings()) {
+                    )
+                    if (BuildConfig.ATTENDANCE_ENABLED) {
                         OutlinedTextField(
-                            value = state.lockSeconds,
-                            onValueChange = { value ->
-                                viewModel.update { it.copy(lockSeconds = value.filter(Char::isDigit)) }
-                            },
-                            label = { Text("مدة قفل تسجيل الدخول (ثوانٍ)") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        if (BuildConfig.ATTENDANCE_ENABLED) {
-                            OutlinedTextField(
-                                value = state.duplicateSeconds,
-                                onValueChange = { value ->
-                                    viewModel.update { it.copy(duplicateSeconds = value.filter(Char::isDigit)) }
-                                },
-                                label = { Text("نافذة منع تكرار الحضور (ثوانٍ)") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        OutlinedTextField(
-                            value = state.sessionTimeoutMinutes,
+                            value = state.duplicateSeconds,
                             onValueChange = { value ->
                                 viewModel.update {
-                                    it.copy(sessionTimeoutMinutes = value.filter(Char::isDigit))
+                                    it.copy(duplicateSeconds = value.filter(Char::isDigit))
                                 }
                             },
-                            label = { Text("مهلة انتهاء الجلسة (دقائق)") },
+                            label = { Text("نافذة منع تكرار الحضور (ثوانٍ)") },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        OutlinedTextField(
-                            value = state.recycleBinDays,
-                            onValueChange = { value ->
-                                viewModel.update { it.copy(recycleBinDays = value.filter(Char::isDigit)) }
-                            },
-                            label = { Text("مدة بقاء سلة المحذوفات (أيام)") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Button(
-                            onClick = viewModel::saveSecurity,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(stringResource(R.string.save)) }
-
-                        HorizontalDivider()
-                        var showExcelPassword by remember { mutableStateOf(false) }
-                        OutlinedTextField(
-                            value = state.excelPassword,
-                            onValueChange = { value ->
-                                viewModel.update { it.copy(excelPassword = value) }
-                            },
-                            label = { Text("كلمة مرور ملفات Excel المصدَّرة") },
-                            singleLine = true,
-                            visualTransformation = if (showExcelPassword) VisualTransformation.None
-                            else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { showExcelPassword = !showExcelPassword }) {
-                                    Icon(
-                                        if (showExcelPassword) Icons.Filled.VisibilityOff
-                                        else Icons.Filled.Visibility,
-                                        contentDescription = stringResource(R.string.show_password)
-                                    )
-                                }
-                            },
-                            supportingText = {
-                                Text("يُطلب إدخالها عند فتح الملف على الكمبيوتر")
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Button(
-                            onClick = viewModel::saveExcelPassword,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("حفظ كلمة مرور Excel") }
                     }
+                    OutlinedTextField(
+                        value = state.sessionTimeoutMinutes,
+                        onValueChange = { value ->
+                            viewModel.update {
+                                it.copy(sessionTimeoutMinutes = value.filter(Char::isDigit))
+                            }
+                        },
+                        label = { Text("مهلة انتهاء الجلسة (دقائق)") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = state.recycleBinDays,
+                        onValueChange = { value ->
+                            viewModel.update { it.copy(recycleBinDays = value.filter(Char::isDigit)) }
+                        },
+                        label = { Text("مدة بقاء سلة المحذوفات (أيام)") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = viewModel::saveSecurity,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    ) { Text(stringResource(R.string.save)) }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    var showExcelPassword by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = state.excelPassword,
+                        onValueChange = { value ->
+                            viewModel.update { it.copy(excelPassword = value) }
+                        },
+                        label = { Text("كلمة مرور ملفات Excel المصدَّرة") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        visualTransformation = if (showExcelPassword) VisualTransformation.None
+                        else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showExcelPassword = !showExcelPassword }) {
+                                Icon(
+                                    if (showExcelPassword) Icons.Filled.VisibilityOff
+                                    else Icons.Filled.Visibility,
+                                    contentDescription = stringResource(R.string.show_password)
+                                )
+                            }
+                        },
+                        supportingText = {
+                            Text("يُطلب إدخالها عند فتح الملف على الكمبيوتر")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = viewModel::saveExcelPassword,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    ) { Text("حفظ كلمة مرور Excel") }
                 }
             }
 
             if (viewModel.isSuperAdmin()) {
-                Card {
+                SectionHeader("الوضع")
+                VCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 stringResource(R.string.read_only_mode),
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 "عند التفعيل تُمنع جميع عمليات التعديل",
@@ -277,7 +303,7 @@ fun SettingsScreen(
             }
 
             SectionHeader("روابط")
-            Card {
+            VCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
                     if (viewModel.canViewAuditLog()) {
                         LinkRow(
@@ -285,7 +311,7 @@ fun SettingsScreen(
                             Icons.AutoMirrored.Filled.ListAlt,
                             onOpenAuditLog
                         )
-                        HorizontalDivider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     if (viewModel.canSeeRecycleBin()) {
                         LinkRow(
@@ -293,7 +319,7 @@ fun SettingsScreen(
                             Icons.Filled.Delete,
                             onOpenRecycleBin
                         )
-                        HorizontalDivider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     if (viewModel.canManagePlaces()) {
                         LinkRow(
@@ -301,7 +327,7 @@ fun SettingsScreen(
                             Icons.Filled.Place,
                             onOpenPlaces
                         )
-                        HorizontalDivider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     LinkRow(
                         stringResource(R.string.system_health),
@@ -312,22 +338,19 @@ fun SettingsScreen(
             }
 
             SectionHeader(stringResource(R.string.about))
-            Card {
+            VCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    TileIcon(Icons.Filled.Info)
                     Column(modifier = Modifier.padding(start = 12.dp)) {
                         Text(
                             stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             stringResource(R.string.version) + " " + APP_VERSION,
@@ -337,7 +360,7 @@ fun SettingsScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
         }
 
         if (showPasswordDialog) {
@@ -346,14 +369,16 @@ fun SettingsScreen(
             var confirm by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { showPasswordDialog = false },
+                shape = MaterialTheme.shapes.large,
                 title = { Text("تغيير كلمة المرور") },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             value = current,
                             onValueChange = { current = it },
                             label = { Text("كلمة المرور الحالية") },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -362,6 +387,7 @@ fun SettingsScreen(
                             onValueChange = { newPassword = it },
                             label = { Text("كلمة المرور الجديدة") },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -370,6 +396,7 @@ fun SettingsScreen(
                             onValueChange = { confirm = it },
                             label = { Text(stringResource(R.string.confirm_password)) },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -391,21 +418,61 @@ fun SettingsScreen(
     }
 }
 
+/** SectionHeader + a VCard holding that group's controls. */
+@Composable
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    SectionHeader(title)
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content
+        )
+    }
+}
+
+/** Icon in the tinted rounded square used across the design system. */
+@Composable
+private fun TileIcon(icon: ImageVector) {
+    val c = AppColors.current
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(c.tileIconBg),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = c.tileIcon
+        )
+    }
+}
+
 @Composable
 private fun LinkRow(label: String, icon: ImageVector, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(14.dp),
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            TileIcon(icon)
             Text(
                 label,
                 style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 12.dp)
             )
         }

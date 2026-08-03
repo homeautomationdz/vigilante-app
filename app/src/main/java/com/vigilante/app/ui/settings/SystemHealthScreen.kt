@@ -8,13 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,9 +39,13 @@ import androidx.lifecycle.viewModelScope
 import com.vigilante.app.R
 import com.vigilante.app.data.repository.IntegrityChecker
 import com.vigilante.app.data.repository.IntegrityReport
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
+import com.vigilante.app.ui.theme.AppColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,48 +142,70 @@ fun SystemHealthScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text(
-                if (report.isClean) "✅ النظام سليم" else "⚠️ توجد ملاحظات",
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (report.isClean) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error
-            )
-            Text(
-                "آخر فحص: ${report.checkedAt.format(dateTimeFmt)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            VCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (report.isClean) Icons.Filled.CheckCircle
+                        else Icons.Filled.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                        tint = if (report.isClean) AppColors.current.success
+                        else AppColors.current.warning
+                    )
+                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                        Text(
+                            if (report.isClean) "النظام سليم" else "توجد ملاحظات",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            "آخر فحص: ${report.checkedAt.format(dateTimeFmt)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             SectionHeader("نتائج الفحص")
-            Card {
-                Column(modifier = Modifier.padding(12.dp)) {
+            VCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
                     HealthRow("صور مفقودة", report.missingPhotos.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthRow("رموز QR مفقودة (تُصلح تلقائيًا)", report.missingQr.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthRow("صور بلا متطوع", report.orphanPhotos.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthRow("رموز QR بلا متطوع", report.orphanQr.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthRow("سجلات حضور معلقة", report.orphanAttendance.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthRow("معرفات غير صالحة", report.invalidIds.size)
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("آخر نسخة احتياطية", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "آخر نسخة احتياطية",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Text(
                             report.lastBackup ?: "لا توجد",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     HealthBoolRow("الملف الرئيسي موجود", report.masterFileExists)
                 }
             }
@@ -186,52 +214,69 @@ fun SystemHealthScreen(
             Button(
                 onClick = viewModel::autoFix,
                 enabled = !state.fixing,
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(Icons.Filled.Build, contentDescription = null)
+                Icon(
+                    Icons.Filled.Build,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text("إصلاح تلقائي", style = MaterialTheme.typography.titleMedium)
             }
+            Spacer(Modifier.height(28.dp))
         }
+    }
+}
+
+/** Status is icon + word + tone — never a bare colour or a lone emoji. */
+@Composable
+private fun HealthStatusRow(label: String, ok: Boolean, statusText: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(10.dp))
+        Icon(
+            if (ok) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (ok) AppColors.current.success else AppColors.current.warning
+        )
+        Spacer(Modifier.width(6.dp))
+        StatusChip(
+            text = statusText,
+            tone = if (ok) ChipTone.SUCCESS else ChipTone.WARNING
+        )
     }
 }
 
 @Composable
 private fun HealthRow(label: String, count: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            if (count == 0) "✅ 0" else "⚠️ $count",
-            style = MaterialTheme.typography.titleMedium,
-            color = if (count == 0) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.error
-        )
-    }
+    HealthStatusRow(
+        label = label,
+        ok = count == 0,
+        statusText = if (count == 0) "سليم" else "$count ملاحظة"
+    )
 }
 
 @Composable
 private fun HealthBoolRow(label: String, ok: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            if (ok) "✅" else "⚠️",
-            style = MaterialTheme.typography.titleMedium,
-            color = if (ok) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.error
-        )
-    }
+    HealthStatusRow(
+        label = label,
+        ok = ok,
+        statusText = if (ok) "موجود" else "مفقود"
+    )
 }

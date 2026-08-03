@@ -1,14 +1,23 @@
 package com.vigilante.app.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -19,17 +28,255 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.vigilante.app.ui.theme.AppColors
+
+/*
+ * Shared design-system components.
+ *
+ * House rules (from the "Soft UI Evolution" + "Inclusive Design" entries of
+ * the UI UX Pro Max database): 14dp radius on containers, borders instead of
+ * heavy drop shadows, 200–300ms motion, tap targets ≥ 48dp, and status is
+ * never colour-only — always colour + text (and an icon where it helps).
+ */
+
+private val CardRadius = RoundedCornerShape(14.dp)
+
+/** Standard content container: hairline border, whisper of elevation. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val border = BorderStroke(1.dp, AppColors.current.cardBorder)
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            modifier = modifier,
+            shape = CardRadius,
+            border = border,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 3.dp)
+        ) { content() }
+    } else {
+        Card(
+            modifier = modifier,
+            shape = CardRadius,
+            border = border,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) { content() }
+    }
+}
+
+/**
+ * The signature navy panel at the top of a screen. Rounded on its bottom
+ * edge so content appears to slide underneath it.
+ */
+@Composable
+fun HeaderPanel(
+    title: String,
+    subtitle: String? = null,
+    trailing: @Composable (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
+    content: @Composable (() -> Unit)? = null
+) {
+    val c = AppColors.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp))
+            .background(Brush.linearGradient(listOf(c.headerStart, c.headerEnd)))
+            .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 22.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "رجوع",
+                            tint = c.onHeader
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = c.onHeader
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.onHeaderMuted,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+                trailing?.invoke()
+            }
+            if (content != null) {
+                Spacer(Modifier.height(16.dp))
+                content()
+            }
+        }
+    }
+}
+
+/** Numeric dashboard tile: big accent number over a quiet label. */
+@Composable
+fun StatCard(
+    title: String,
+    value: String,
+    icon: ImageVector? = null,
+    modifier: Modifier = Modifier,
+    accent: Color? = null
+) {
+    val c = AppColors.current
+    VCard(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(c.tileIconBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp),
+                        tint = c.tileIcon
+                    )
+                }
+                Spacer(Modifier.height(9.dp))
+            }
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                color = accent ?: c.statValue
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 1.dp)
+            )
+        }
+    }
+}
+
+/** Big tappable section entry used on the home screen. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MenuTile(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    tint: Color? = null,
+    container: Color? = null,
+    onClick: () -> Unit
+) {
+    val c = AppColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = tween(durationMillis = 180),
+        label = "tileScale"
+    )
+    Card(
+        onClick = onClick,
+        interactionSource = interaction,
+        modifier = modifier.scale(scale),
+        shape = CardRadius,
+        border = BorderStroke(1.dp, c.cardBorder),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(container ?: c.tileIconBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(21.dp),
+                    tint = tint ?: c.tileIcon
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/** Status pill — always paired with a word, never colour alone. */
+@Composable
+fun StatusChip(
+    text: String,
+    tone: ChipTone = ChipTone.NEUTRAL,
+    modifier: Modifier = Modifier
+) {
+    val c = AppColors.current
+    val (bg, fg) = when (tone) {
+        ChipTone.SUCCESS -> c.successContainer to c.onSuccessContainer
+        ChipTone.WARNING -> c.warningContainer to c.onWarningContainer
+        ChipTone.DANGER -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        ChipTone.INFO -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        ChipTone.NEUTRAL -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = bg
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = fg,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+        )
+    }
+}
+
+enum class ChipTone { NEUTRAL, SUCCESS, WARNING, DANGER, INFO }
 
 /** Generic confirmation dialog used before every sensitive action. */
 @Composable
@@ -44,64 +291,25 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
+        shape = RoundedCornerShape(18.dp),
+        title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
                     confirmLabel,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (destructive) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.secondary
                 )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            TextButton(onClick = onDismiss) {
+                Text(dismissLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     )
-}
-
-/** Dashboard / stats numeric card. */
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    icon: ImageVector? = null,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (icon != null) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(26.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            Text(
-                value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-    }
 }
 
 /** Shown when a list has no content. */
@@ -111,27 +319,34 @@ fun EmptyState(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
+    val c = AppColors.current
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(32.dp),
+        modifier = modifier.fillMaxWidth().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (icon != null) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(c.tileIconBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(38.dp),
+                    tint = c.tileIcon
+                )
+            }
         }
         Text(
             text,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp)
+            modifier = Modifier.padding(top = 16.dp)
         )
     }
 }
@@ -141,12 +356,10 @@ fun EmptyState(
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp)
     )
 }
 
@@ -154,7 +367,7 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
     }
 }
 
@@ -166,8 +379,9 @@ fun VigilanteTopBar(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val c = AppColors.current
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
@@ -180,10 +394,10 @@ fun VigilanteTopBar(
         },
         actions = { actions() },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = c.headerStart,
+            titleContentColor = c.onHeader,
+            navigationIconContentColor = c.onHeader,
+            actionIconContentColor = c.onHeader
         )
     )
 }

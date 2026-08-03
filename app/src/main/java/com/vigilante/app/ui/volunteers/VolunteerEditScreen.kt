@@ -3,9 +3,11 @@ package com.vigilante.app.ui.volunteers
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -40,7 +42,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -69,7 +70,9 @@ import com.vigilante.app.core.Validation
 import com.vigilante.app.ui.components.ConfirmDialog
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
+import com.vigilante.app.ui.theme.AppColors
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -126,104 +129,140 @@ fun VolunteerEditScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Photo
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val model: Any? = state.photoUri
-                    ?: state.existingPhoto?.takeIf { !state.photoRemoved }
-                if (model != null) {
-                    AsyncImage(
-                        model = model,
-                        contentDescription = stringResource(R.string.photo),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(88.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.size(88.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+            // ---- الصورة ----
+            SectionHeader(stringResource(R.string.photo))
+            VCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    val model: Any? = state.photoUri
+                        ?: state.existingPhoto?.takeIf { !state.photoRemoved }
+                    if (model != null) {
+                        AsyncImage(
+                            model = model,
+                            contentDescription = stringResource(R.string.photo),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(AppColors.current.tileIconBg),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 Icons.Filled.Person,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.size(32.dp),
+                                tint = AppColors.current.tileIcon
                             )
                         }
                     }
-                }
-                Column {
-                    OutlinedButton(onClick = {
-                        photoPicker.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                    Column {
+                        OutlinedButton(
+                            onClick = {
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Icon(
+                                Icons.Filled.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
                             )
-                        )
-                    }) {
-                        Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("اختيار صورة")
-                    }
-                    if (model != null) {
-                        TextButton(onClick = viewModel::removePhoto) {
-                            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("حذف الصورة", color = MaterialTheme.colorScheme.error)
+                            Text("اختيار صورة")
+                        }
+                        if (model != null) {
+                            TextButton(onClick = viewModel::removePhoto) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("حذف الصورة", color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 }
             }
 
-            SectionHeader("البيانات الأساسية")
+            // ---- بيانات أساسية ----
+            FormSection("بيانات أساسية") {
+                OutlinedTextField(
+                    value = state.membershipNumber,
+                    onValueChange = { value ->
+                        viewModel.update { it.copy(membershipNumber = value) }
+                    },
+                    label = {
+                        Text(
+                            stringResource(R.string.membership_number) +
+                                " (اختياري — يُنشأ تلقائيًا)"
+                        )
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                FieldWithError(
+                    value = state.firstName,
+                    onValue = { value -> viewModel.update { it.copy(firstName = value) } },
+                    label = stringResource(R.string.first_name),
+                    error = state.fieldErrors["firstName"]
+                )
+                FieldWithError(
+                    value = state.lastName,
+                    onValue = { value -> viewModel.update { it.copy(lastName = value) } },
+                    label = stringResource(R.string.last_name),
+                    error = state.fieldErrors["lastName"]
+                )
+                FieldWithError(
+                    value = state.fatherName,
+                    onValue = { value -> viewModel.update { it.copy(fatherName = value) } },
+                    label = stringResource(R.string.father_name),
+                    error = state.fieldErrors["fatherName"]
+                )
+                BirthDateField(
+                    value = state.birthDateInput,
+                    onValue = { digits -> viewModel.update { it.copy(birthDateInput = digits) } },
+                    error = state.fieldErrors["birthDate"]
+                )
+                DateField(
+                    label = stringResource(R.string.join_date),
+                    value = state.joinDate.toString(),
+                    error = state.fieldErrors["joinDate"],
+                    onClick = { showJoinPicker = true }
+                )
+                DropdownField(
+                    label = stringResource(R.string.blood_group),
+                    selected = state.bloodGroup.ifBlank { "—" },
+                    options = listOf("—") + Validation.BLOOD_GROUPS,
+                    onSelected = { picked ->
+                        viewModel.update {
+                            it.copy(bloodGroup = if (picked == "—") "" else picked)
+                        }
+                    }
+                )
+            }
 
-            OutlinedTextField(
-                value = state.membershipNumber,
-                onValueChange = { value -> viewModel.update { it.copy(membershipNumber = value) } },
-                label = { Text(stringResource(R.string.membership_number) + " (اختياري — يُنشأ تلقائيًا)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            FieldWithError(
-                value = state.firstName,
-                onValue = { value -> viewModel.update { it.copy(firstName = value) } },
-                label = stringResource(R.string.first_name),
-                error = state.fieldErrors["firstName"]
-            )
-            FieldWithError(
-                value = state.lastName,
-                onValue = { value -> viewModel.update { it.copy(lastName = value) } },
-                label = stringResource(R.string.last_name),
-                error = state.fieldErrors["lastName"]
-            )
-            FieldWithError(
-                value = state.fatherName,
-                onValue = { value -> viewModel.update { it.copy(fatherName = value) } },
-                label = stringResource(R.string.father_name),
-                error = state.fieldErrors["fatherName"]
-            )
-
-            BirthDateField(
-                value = state.birthDateInput,
-                onValue = { digits -> viewModel.update { it.copy(birthDateInput = digits) } },
-                error = state.fieldErrors["birthDate"]
-            )
-            DateField(
-                label = stringResource(R.string.join_date),
-                value = state.joinDate.toString(),
-                error = state.fieldErrors["joinDate"],
-                onClick = { showJoinPicker = true }
-            )
-
-            Column {
+            // ---- المكان ----
+            FormSection("المكان") {
                 DropdownField(
                     label = stringResource(R.string.municipality),
                     selected = state.municipality.ifBlank { NO_PLACE },
@@ -240,14 +279,12 @@ fun VolunteerEditScreen(
                     "قائمة البلديات تُدار من الإعدادات ← إدارة الأماكن",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 )
-            }
 
-            // الحي: typed directly like the name fields (user request). Known
-            // districts appear as tappable suggestions, and whatever is typed
-            // is remembered for next time — no trip to the settings screen.
-            Column {
+                // الحي: typed directly like the name fields (user request). Known
+                // districts appear as tappable suggestions, and whatever is typed
+                // is remembered for next time — no trip to the settings screen.
                 FieldWithError(
                     value = state.district,
                     onValue = { typed -> viewModel.update { it.copy(district = typed) } },
@@ -258,18 +295,22 @@ fun VolunteerEditScreen(
                     val query = state.district.trim()
                     districts.map { it.name }
                         .distinct()
-                        .filter { query.isBlank() || (it.contains(query, true) && !it.equals(query, true)) }
+                        .filter {
+                            query.isBlank() ||
+                                (it.contains(query, true) && !it.equals(query, true))
+                        }
                         .take(6)
                 }
                 if (suggestions.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 2.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         suggestions.forEach { name ->
                             InputChip(
                                 selected = false,
                                 onClick = { viewModel.update { it.copy(district = name) } },
+                                shape = MaterialTheme.shapes.small,
                                 label = { Text(name) }
                             )
                         }
@@ -277,98 +318,108 @@ fun VolunteerEditScreen(
                 }
             }
 
-            DropdownField(
-                label = stringResource(R.string.blood_group),
-                selected = state.bloodGroup.ifBlank { "—" },
-                options = listOf("—") + Validation.BLOOD_GROUPS,
-                onSelected = { picked ->
-                    viewModel.update { it.copy(bloodGroup = if (picked == "—") "" else picked) }
-                }
-            )
+            // ---- الاتصال ----
+            FormSection("الاتصال") {
+                FieldWithError(
+                    value = state.phone1,
+                    onValue = { value ->
+                        if (value.length <= 10 && value.all(Char::isDigit)) {
+                            viewModel.update { it.copy(phone1 = value) }
+                        }
+                    },
+                    label = stringResource(R.string.phone1),
+                    error = state.fieldErrors["phone1"],
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                FieldWithError(
+                    value = state.phone2,
+                    onValue = { value ->
+                        if (value.length <= 10 && value.all(Char::isDigit)) {
+                            viewModel.update { it.copy(phone2 = value) }
+                        }
+                    },
+                    label = stringResource(R.string.phone2),
+                    error = state.fieldErrors["phone2"],
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
 
-            FieldWithError(
-                value = state.phone1,
-                onValue = { value ->
-                    if (value.length <= 10 && value.all(Char::isDigit)) {
-                        viewModel.update { it.copy(phone1 = value) }
-                    }
-                },
-                label = stringResource(R.string.phone1),
-                error = state.fieldErrors["phone1"],
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-            FieldWithError(
-                value = state.phone2,
-                onValue = { value ->
-                    if (value.length <= 10 && value.all(Char::isDigit)) {
-                        viewModel.update { it.copy(phone2 = value) }
-                    }
-                },
-                label = stringResource(R.string.phone2),
-                error = state.fieldErrors["phone2"],
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-            OutlinedTextField(
-                value = state.notes,
-                onValueChange = { value -> viewModel.update { it.copy(notes = value) } },
-                label = { Text(stringResource(R.string.notes)) },
-                minLines = 2,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            SectionHeader(stringResource(R.string.tags))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                state.tags.forEach { tag ->
-                    InputChip(
-                        selected = false,
-                        onClick = { viewModel.removeTag(tag) },
-                        label = { Text(tag) },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+            // ---- إضافي ----
+            FormSection("إضافي") {
+                OutlinedTextField(
+                    value = state.notes,
+                    onValueChange = { value -> viewModel.update { it.copy(notes = value) } },
+                    label = { Text(stringResource(R.string.notes)) },
+                    minLines = 2,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    stringResource(R.string.tags),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (state.tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        state.tags.forEach { tag ->
+                            InputChip(
+                                selected = false,
+                                onClick = { viewModel.removeTag(tag) },
+                                shape = MaterialTheme.shapes.small,
+                                label = { Text(tag) },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             )
                         }
-                    )
+                    }
                 }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = tagInput,
-                    onValueChange = { tagInput = it },
-                    label = { Text("وسم جديد") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = {
-                    viewModel.addTag(tagInput)
-                    tagInput = ""
-                }) {
-                    Icon(Icons.Filled.Add, contentDescription = "إضافة وسم")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = tagInput,
+                        onValueChange = { tagInput = it },
+                        label = { Text("وسم جديد") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            viewModel.addTag(tagInput)
+                            tagInput = ""
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "إضافة وسم")
+                    }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             Button(
                 onClick = { viewModel.save() },
                 enabled = !state.saving,
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(54.dp)
             ) {
                 Text(
                     stringResource(R.string.save),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
         }
 
         if (showJoinPicker) {
@@ -395,6 +446,24 @@ fun VolunteerEditScreen(
     }
 }
 
+/** SectionHeader + a VCard holding the fields of that group. */
+@Composable
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    SectionHeader(title)
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content
+        )
+    }
+}
+
 @Composable
 private fun FieldWithError(
     value: String,
@@ -409,6 +478,7 @@ private fun FieldWithError(
         label = { Text(label) },
         singleLine = true,
         isError = error != null,
+        shape = MaterialTheme.shapes.small,
         supportingText = { if (error != null) Text(error) },
         keyboardOptions = keyboardOptions,
         modifier = Modifier.fillMaxWidth()
@@ -434,6 +504,7 @@ private fun BirthDateField(
         placeholder = { Text("يوم/شهر/سنة — مثال: 25/03/1990") },
         singleLine = true,
         isError = error != null,
+        shape = MaterialTheme.shapes.small,
         supportingText = { if (error != null) Text(error) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         visualTransformation = dateSlashesTransformation,
@@ -477,6 +548,7 @@ private fun DateField(
         readOnly = true,
         label = { Text(label) },
         isError = error != null,
+        shape = MaterialTheme.shapes.small,
         supportingText = { if (error != null) Text(error) },
         trailingIcon = {
             IconButton(onClick = onClick) {
@@ -500,6 +572,7 @@ private fun AppDatePicker(
     )
     DatePickerDialog(
         onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.large,
         confirmButton = {
             TextButton(onClick = {
                 val millis = pickerState.selectedDateMillis

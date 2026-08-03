@@ -13,12 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.LockReset
-import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,8 +43,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 import com.vigilante.app.data.local.entity.Admin
 import com.vigilante.app.data.local.entity.AdminRole
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.ConfirmDialog
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import com.vigilante.app.ui.volunteers.DropdownField
 import java.time.format.DateTimeFormatter
@@ -79,6 +81,9 @@ fun AdminsScreen(
             if (viewModel.canManage()) {
                 ExtendedFloatingActionButton(
                     onClick = { showAddDialog = true },
+                    shape = MaterialTheme.shapes.large,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.add_admin)) }
                 )
@@ -88,7 +93,7 @@ fun AdminsScreen(
         if (admins.isEmpty()) {
             EmptyState(
                 text = "لا يوجد مشرفون",
-                icon = Icons.Filled.ManageAccounts,
+                icon = Icons.Filled.AdminPanelSettings,
                 modifier = Modifier.padding(padding)
             )
         } else {
@@ -96,44 +101,63 @@ fun AdminsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp, top = 12.dp, bottom = 92.dp
+                )
             ) {
                 items(admins, key = { it.adminId }) { admin ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(14.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(admin.fullName, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        admin.fullName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     Text(
                                         admin.username,
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                AssistChip(
-                                    onClick = {},
-                                    label = {
-                                        Text(
-                                            if (admin.role == AdminRole.SUPER_ADMIN)
-                                                stringResource(R.string.role_superadmin)
-                                            else stringResource(R.string.role_admin)
-                                        )
-                                    }
+                                StatusChip(
+                                    text = if (admin.role == AdminRole.SUPER_ADMIN)
+                                        stringResource(R.string.role_superadmin)
+                                    else stringResource(R.string.role_admin),
+                                    tone = if (admin.role == AdminRole.SUPER_ADMIN)
+                                        ChipTone.INFO else ChipTone.NEUTRAL
                                 )
                             }
-                            Text(
-                                stringResource(R.string.last_login) + ": " +
-                                    (admin.lastLogin?.format(dateTimeFmt) ?: "—"),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    stringResource(R.string.last_login) + ": " +
+                                        (admin.lastLogin?.format(dateTimeFmt) ?: "—"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                StatusChip(
+                                    text = if (admin.active) stringResource(R.string.account_active)
+                                    else stringResource(R.string.account_disabled),
+                                    tone = if (admin.active) ChipTone.SUCCESS else ChipTone.WARNING
+                                )
+                            }
                             if (viewModel.canManage()) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                    modifier = Modifier.padding(top = 10.dp)
+                                )
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -147,16 +171,17 @@ fun AdminsScreen(
                                             onCheckedChange = { toggleTarget = admin }
                                         )
                                         Text(
-                                            if (admin.active) stringResource(R.string.account_active)
-                                            else stringResource(R.string.account_disabled),
+                                            if (admin.active) "الحساب مفعّل" else "الحساب معطل",
                                             style = MaterialTheme.typography.labelMedium,
-                                            modifier = Modifier.padding(start = 6.dp)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(start = 8.dp)
                                         )
                                     }
                                     IconButton(onClick = { resetTarget = admin }) {
                                         Icon(
                                             Icons.Filled.LockReset,
-                                            contentDescription = stringResource(R.string.reset_password)
+                                            contentDescription = stringResource(R.string.reset_password),
+                                            tint = MaterialTheme.colorScheme.secondary
                                         )
                                     }
                                 }
@@ -196,6 +221,7 @@ fun AdminsScreen(
             var newPassword by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { resetTarget = null },
+                shape = MaterialTheme.shapes.large,
                 title = { Text(stringResource(R.string.reset_password)) },
                 text = {
                     Column {
@@ -206,6 +232,7 @@ fun AdminsScreen(
                             onValueChange = { newPassword = it },
                             label = { Text(stringResource(R.string.password)) },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -240,14 +267,16 @@ private fun AddAdminDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.large,
         title = { Text(stringResource(R.string.add_admin)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = fullName,
                     onValueChange = { fullName = it },
                     label = { Text("الاسم الكامل") },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -255,6 +284,7 @@ private fun AddAdminDialog(
                     onValueChange = { username = it },
                     label = { Text(stringResource(R.string.username)) },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -262,6 +292,7 @@ private fun AddAdminDialog(
                     onValueChange = { password = it },
                     label = { Text(stringResource(R.string.password)) },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 DropdownField(

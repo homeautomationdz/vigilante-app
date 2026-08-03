@@ -16,12 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -44,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 import com.vigilante.app.ui.components.EmptyState
 import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import java.time.format.DateTimeFormatter
 
@@ -101,6 +101,7 @@ fun BackupScreen(
     errorDialog?.let { text ->
         AlertDialog(
             onDismissRequest = viewModel::dismissError,
+            shape = MaterialTheme.shapes.large,
             title = { Text("خطأ") },
             text = { Text(text) },
             confirmButton = {
@@ -115,6 +116,7 @@ fun BackupScreen(
     exportReady?.let { ready ->
         AlertDialog(
             onDismissRequest = viewModel::dismissExportReady,
+            shape = MaterialTheme.shapes.large,
             title = { Text("الملف جاهز — اختر مكان الحفظ") },
             text = {
                 Text(
@@ -142,6 +144,7 @@ fun BackupScreen(
     backupOutcome?.let { outcome ->
         AlertDialog(
             onDismissRequest = viewModel::dismissBackupOutcome,
+            shape = MaterialTheme.shapes.large,
             title = { Text("تم إنشاء النسخة الاحتياطية") },
             text = {
                 Text(
@@ -186,18 +189,23 @@ fun BackupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
             if (busy != BackupBusy.NONE) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                )
             }
             Button(
                 onClick = viewModel::createBackup,
                 enabled = busy == BackupBusy.NONE,
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .padding(top = 14.dp)
+                    .height(54.dp)
             ) {
                 if (busy == BackupBusy.BACKUP) {
                     CircularProgressIndicator(
@@ -205,21 +213,29 @@ fun BackupScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Filled.Save, contentDescription = null)
+                    Icon(
+                        Icons.Filled.Backup,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.backup_now), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.backup_now),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 if (viewModel.canExport()) {
                     OutlinedButton(
                         onClick = viewModel::export,
                         enabled = busy == BackupBusy.NONE,
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp)
@@ -227,7 +243,11 @@ fun BackupScreen(
                         if (busy == BackupBusy.EXPORT) {
                             CircularProgressIndicator(modifier = Modifier.size(22.dp))
                         } else {
-                            Icon(Icons.Filled.FileUpload, contentDescription = null)
+                            Icon(
+                                Icons.Filled.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.export_excel))
                         }
@@ -237,30 +257,39 @@ fun BackupScreen(
                     OutlinedButton(
                         onClick = onOpenImport,
                         enabled = busy == BackupBusy.NONE,
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp)
                     ) {
-                        Icon(Icons.Filled.FileDownload, contentDescription = null)
+                        Icon(
+                            Icons.Filled.FileDownload,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.import_excel))
                     }
                 }
             }
 
-            SectionHeader("النسخ السابقة", modifier = Modifier.padding(top = 16.dp))
+            SectionHeader("النسخ السابقة", modifier = Modifier.padding(top = 10.dp))
             if (backups.isEmpty()) {
-                EmptyState(text = "لا توجد نسخ احتياطية بعد", icon = Icons.Filled.Save)
+                EmptyState(text = "لا توجد نسخ احتياطية بعد", icon = Icons.Filled.Backup)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(backups, key = { it.backupId }) { record ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(record.fileName, style = MaterialTheme.typography.titleMedium)
+                        VCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    record.fileName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                                 Text(
                                     record.createdAt.format(dateTimeFmt) + " — " + record.createdBy,
                                     style = MaterialTheme.typography.labelMedium,
@@ -270,7 +299,8 @@ fun BackupScreen(
                                     "متطوعون: ${record.volunteerCount} • حضور: ${record.attendanceCount} • " +
                                         "مشرفون: ${record.adminCount} • الحجم: ${formatSize(record.sizeBytes)}",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                                 Text(
                                     "المكان: Vigilante/Backup/${record.fileName}",

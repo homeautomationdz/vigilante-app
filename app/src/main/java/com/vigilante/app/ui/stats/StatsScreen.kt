@@ -1,6 +1,7 @@
 package com.vigilante.app.ui.stats
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -24,6 +33,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -37,13 +48,22 @@ import com.vigilante.app.ui.components.EmptyState
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
 import com.vigilante.app.ui.components.StatCard
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
+import com.vigilante.app.ui.theme.AppColors
 
-private val chartColors = listOf(
-    Color(0xFF00695C), Color(0xFF26A69A), Color(0xFF80CBC4), Color(0xFF004D40),
-    Color(0xFF00897B), Color(0xFF4DB6AC), Color(0xFFB2DFDB), Color(0xFF00796B),
-    Color(0xFF009688), Color(0xFF52C7B8)
-)
+/**
+ * Categorical series colours, derived from the theme so both light and dark
+ * stay legible. Five base hues plus five softened tints of the same hues —
+ * enough separation for up to ten slices without inventing raw hex values.
+ */
+@Composable
+private fun chartPalette(): List<Color> {
+    val c = AppColors.current
+    val scheme = MaterialTheme.colorScheme
+    val base = listOf(scheme.secondary, scheme.tertiary, c.statValue, c.warning, c.success)
+    return base + base.map { it.copy(alpha = 0.55f) }
+}
 
 @Composable
 fun StatsScreen(
@@ -70,81 +90,145 @@ fun StatsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
             SectionHeader("المتطوعون")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatCard("الإجمالي", (stats.totalActive + stats.totalArchived).toString(), modifier = Modifier.weight(1f))
-                StatCard("نشط", stats.totalActive.toString(), modifier = Modifier.weight(1f))
-                StatCard("مؤرشف", stats.totalArchived.toString(), modifier = Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCard(
+                    "الإجمالي",
+                    (stats.totalActive + stats.totalArchived).toString(),
+                    icon = Icons.Filled.Groups,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    "نشط",
+                    stats.totalActive.toString(),
+                    icon = Icons.Filled.HowToReg,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    "مؤرشف",
+                    stats.totalArchived.toString(),
+                    icon = Icons.Filled.Inventory2,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(top = 10.dp)
             ) {
-                StatCard("منضمو السنة", stats.joinedThisYear.toString(), modifier = Modifier.weight(1f))
-                StatCard("منضمو الشهر", stats.joinedThisMonth.toString(), modifier = Modifier.weight(1f))
+                StatCard(
+                    "منضمو السنة",
+                    stats.joinedThisYear.toString(),
+                    icon = Icons.Filled.PersonAdd,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    "منضمو الشهر",
+                    stats.joinedThisMonth.toString(),
+                    icon = Icons.Filled.CalendarMonth,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             if (BuildConfig.ATTENDANCE_ENABLED) {
-                SectionHeader("الحضور", modifier = Modifier.padding(top = 16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatCard("اليوم", stats.attendanceToday.toString(), modifier = Modifier.weight(1f))
-                    StatCard("الأسبوع", stats.attendanceThisWeek.toString(), modifier = Modifier.weight(1f))
-                    StatCard("الشهر", stats.attendanceThisMonth.toString(), modifier = Modifier.weight(1f))
+                SectionHeader("الحضور", modifier = Modifier.padding(top = 10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatCard(
+                        "اليوم",
+                        stats.attendanceToday.toString(),
+                        icon = Icons.Filled.Today,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        "الأسبوع",
+                        stats.attendanceThisWeek.toString(),
+                        icon = Icons.Filled.DateRange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        "الشهر",
+                        stats.attendanceThisMonth.toString(),
+                        icon = Icons.Filled.CalendarMonth,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = 10.dp)
                 ) {
-                    StatCard("السنة", stats.attendanceThisYear.toString(), modifier = Modifier.weight(1f))
-                    StatCard("الإجمالي", stats.attendanceTotal.toString(), modifier = Modifier.weight(1f))
+                    StatCard(
+                        "السنة",
+                        stats.attendanceThisYear.toString(),
+                        icon = Icons.Filled.DateRange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        "الإجمالي",
+                        stats.attendanceTotal.toString(),
+                        icon = Icons.Filled.HowToReg,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
 
-            SectionHeader(stringResource(R.string.blood_group), modifier = Modifier.padding(top = 16.dp))
+            SectionHeader(stringResource(R.string.blood_group), modifier = Modifier.padding(top = 10.dp))
             if (stats.byBloodGroup.isEmpty()) {
-                Text("لا توجد بيانات", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                NoDataCard()
             } else {
                 BloodGroupPie(stats.byBloodGroup)
             }
 
-            SectionHeader(stringResource(R.string.municipality), modifier = Modifier.padding(top = 16.dp))
+            SectionHeader(stringResource(R.string.municipality), modifier = Modifier.padding(top = 10.dp))
             if (stats.byMunicipality.isEmpty()) {
-                Text("لا توجد بيانات", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                NoDataCard()
             } else {
                 MunicipalityBars(stats.byMunicipality.take(10))
             }
 
             if (BuildConfig.ATTENDANCE_ENABLED) {
-                SectionHeader("الأكثر حضورًا", modifier = Modifier.padding(top = 16.dp))
+                SectionHeader("الأكثر حضورًا", modifier = Modifier.padding(top = 10.dp))
                 AttendeeList(state.topAttendees)
 
-                SectionHeader("الأقل حضورًا", modifier = Modifier.padding(top = 16.dp))
+                SectionHeader("الأقل حضورًا", modifier = Modifier.padding(top = 10.dp))
                 AttendeeList(state.lowestAttendees)
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
         }
+    }
+}
+
+@Composable
+private fun NoDataCard() {
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "لا توجد بيانات",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(14.dp)
+        )
     }
 }
 
 @Composable
 private fun BloodGroupPie(groups: List<GroupCount>) {
     val total = groups.sumOf { it.count }.coerceAtLeast(1)
-    Card {
+    val palette = chartPalette()
+    val holeColor = MaterialTheme.colorScheme.surface
+    VCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Canvas(modifier = Modifier.size(160.dp)) {
+            Canvas(modifier = Modifier.size(150.dp)) {
                 var startAngle = -90f
                 groups.forEachIndexed { index, group ->
                     val sweep = 360f * group.count / total
                     drawArc(
-                        color = chartColors[index % chartColors.size],
+                        color = palette[index % palette.size],
                         startAngle = startAngle,
                         sweepAngle = sweep,
                         useCenter = true,
@@ -153,24 +237,32 @@ private fun BloodGroupPie(groups: List<GroupCount>) {
                     )
                     startAngle += sweep
                 }
+                // Donut hole keeps the slices readable and the centre calm.
+                drawCircle(color = holeColor, radius = size.minDimension / 4f)
             }
-            Column(modifier = Modifier.padding(start = 16.dp)) {
+            Column(modifier = Modifier.padding(start = 14.dp)) {
                 groups.forEachIndexed { index, group ->
+                    val percent = group.count * 100 / total
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 2.dp)
+                        modifier = Modifier.padding(vertical = 3.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                        ) {
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawRect(chartColors[index % chartColors.size])
-                            }
-                        }
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(palette[index % palette.size])
+                        )
                         Text(
-                            "${group.bloodGroup ?: "غير محدد"}: ${group.count}",
+                            group.bloodGroup ?: "غير محدد",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        Text(
+                            "${group.count} ($percent٪)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 6.dp)
                         )
                     }
@@ -183,38 +275,45 @@ private fun BloodGroupPie(groups: List<GroupCount>) {
 @Composable
 private fun MunicipalityBars(groups: List<GroupCount>) {
     val max = groups.maxOf { it.count }.coerceAtLeast(1)
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
+    val palette = chartPalette()
+    val track = MaterialTheme.colorScheme.surfaceVariant
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp)) {
             groups.forEachIndexed { index, group ->
-                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                val fraction = group.count.toFloat() / max
+                val color = palette[index % palette.size]
+                Column(modifier = Modifier.padding(vertical = 5.dp)) {
+                    Text(
+                        group.bloodGroup ?: "غير محدد",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            group.bloodGroup ?: "غير محدد",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            group.count.toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    val fraction = group.count.toFloat() / max
-                    val color = chartColors[index % chartColors.size]
-                    val track = MaterialTheme.colorScheme.surfaceVariant
-                    Canvas(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(14.dp)
-                            .padding(top = 4.dp)
+                            .padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        drawRect(color = track, size = size)
-                        drawRect(
-                            color = color,
-                            topLeft = Offset(size.width * (1f - fraction), 0f),
-                            size = Size(size.width * fraction, size.height)
+                        Canvas(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(14.dp)
+                        ) {
+                            val radius = CornerRadius(size.height / 2f, size.height / 2f)
+                            drawRoundRect(color = track, size = size, cornerRadius = radius)
+                            // RTL: bars grow from the right edge towards the left.
+                            drawRoundRect(
+                                color = color,
+                                topLeft = Offset(size.width * (1f - fraction), 0f),
+                                size = Size(size.width * fraction, size.height),
+                                cornerRadius = radius
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            group.count.toString(),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = AppColors.current.statValue
                         )
                     }
                 }
@@ -226,26 +325,32 @@ private fun MunicipalityBars(groups: List<GroupCount>) {
 @Composable
 private fun AttendeeList(items: List<NamedCount>) {
     if (items.isEmpty()) {
-        Text("لا توجد بيانات", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        NoDataCard()
         return
     }
-    Card {
-        Column(modifier = Modifier.padding(12.dp)) {
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
             items.forEachIndexed { index, item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(item.name, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        item.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Text(
                         item.count.toString(),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = AppColors.current.statValue
                     )
                 }
-                if (index < items.lastIndex) HorizontalDivider()
+                if (index < items.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
         }
     }

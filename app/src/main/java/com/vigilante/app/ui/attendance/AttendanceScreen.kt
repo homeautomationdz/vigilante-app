@@ -4,15 +4,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -21,8 +18,6 @@ import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,8 +40,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.vigilante.app.R
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.MenuTile
 import com.vigilante.app.ui.components.SectionHeader
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import java.time.format.DateTimeFormatter
 
@@ -100,13 +99,18 @@ fun AttendanceScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Button(
+                MenuTile(
+                    label = stringResource(R.string.scan_qr),
+                    icon = Icons.Filled.QrCodeScanner,
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         scanLauncher.launch(
                             ScanOptions()
@@ -114,53 +118,43 @@ fun AttendanceScreen(
                                 .setBeepEnabled(true)
                                 .setPrompt("وجّه الكاميرا نحو رمز QR الخاص بالمتطوع")
                         )
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(84.dp)
-                ) {
-                    Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.scan_qr), style = MaterialTheme.typography.titleMedium)
-                }
-                Button(
-                    onClick = viewModel::openManual,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(84.dp)
-                ) {
-                    Icon(Icons.Filled.PersonSearch, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.manual_attendance),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+                    }
+                )
+                MenuTile(
+                    label = stringResource(R.string.manual_attendance),
+                    icon = Icons.Filled.PersonSearch,
+                    modifier = Modifier.weight(1f),
+                    onClick = viewModel::openManual
+                )
             }
 
-            SectionHeader("آخر تسجيلات الحضور", modifier = Modifier.padding(top = 16.dp))
+            SectionHeader("آخر تسجيلات الحضور", modifier = Modifier.padding(top = 10.dp))
             if (recent.isEmpty()) {
                 EmptyState(text = "لا يوجد حضور مسجل بعد", icon = Icons.Filled.EventBusy)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(recent, key = { it.attendance.attendanceId }) { row ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenVolunteer(row.attendance.volunteerId) }
+                        VCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { onOpenVolunteer(row.attendance.volunteerId) }
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text(row.volunteerName, style = MaterialTheme.typography.titleMedium)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        row.volunteerName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     Text(
                                         row.attendance.recordedAt.format(timeFmt) +
                                             " — " + row.attendance.adminUsername,
@@ -169,11 +163,9 @@ fun AttendanceScreen(
                                     )
                                 }
                                 if (row.attendance.status.name == "CANCELLED") {
-                                    Text(
-                                        "ملغى",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
+                                    StatusChip(text = "ملغى", tone = ChipTone.DANGER)
+                                } else {
+                                    StatusChip(text = "مسجل", tone = ChipTone.SUCCESS)
                                 }
                             }
                         }
@@ -186,6 +178,7 @@ fun AttendanceScreen(
             is AttendanceDialog.Confirm -> {
                 AlertDialog(
                     onDismissRequest = viewModel::dismissDialog,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text(stringResource(R.string.attendance_found_title)) },
                     text = {
                         Text(
@@ -208,6 +201,7 @@ fun AttendanceScreen(
             is AttendanceDialog.Archived -> {
                 AlertDialog(
                     onDismissRequest = viewModel::dismissDialog,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text(stringResource(R.string.qr_archived)) },
                     text = { Text(d.volunteer.displayName) },
                     confirmButton = {
@@ -229,6 +223,7 @@ fun AttendanceScreen(
         if (manualOpen) {
             AlertDialog(
                 onDismissRequest = viewModel::closeManual,
+                shape = MaterialTheme.shapes.large,
                 title = { Text(stringResource(R.string.manual_attendance)) },
                 text = {
                     Column {
@@ -237,6 +232,7 @@ fun AttendanceScreen(
                             onValueChange = viewModel::setManualQuery,
                             placeholder = { Text(stringResource(R.string.search_hint)) },
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                         LazyColumn(
@@ -250,9 +246,14 @@ fun AttendanceScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { viewModel.pickManually(volunteer) }
+                                        .heightIn(min = 48.dp)
                                         .padding(vertical = 8.dp)
                                 ) {
-                                    Text(volunteer.displayName, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        volunteer.displayName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     Text(
                                         "${volunteer.volunteerId} • ${volunteer.phone1}",
                                         style = MaterialTheme.typography.labelMedium,

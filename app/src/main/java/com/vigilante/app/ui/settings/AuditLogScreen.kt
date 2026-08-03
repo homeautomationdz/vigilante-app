@@ -11,9 +11,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -31,7 +33,10 @@ import com.vigilante.app.R
 import com.vigilante.app.data.local.VigilanteDatabase
 import com.vigilante.app.data.local.entity.AuditLog
 import com.vigilante.app.data.local.entity.AuditResult
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,10 +89,18 @@ fun AuditLogScreen(
                 onValueChange = viewModel::setQuery,
                 placeholder = { Text("ابحث بالمشرف أو العملية أو المتطوع…") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setQuery("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = "مسح البحث")
+                        }
+                    }
+                },
                 singleLine = true,
+                shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             )
             if (logs.isEmpty()) {
                 EmptyState(
@@ -97,35 +110,46 @@ fun AuditLogScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     items(logs, key = { it.logId }) { log ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                        VCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         log.adminUsername,
-                                        style = MaterialTheme.typography.titleMedium
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Text(
-                                        log.timestamp.format(dateTimeFmt),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    StatusChip(
+                                        text = if (log.result == AuditResult.FAILURE) "فشل"
+                                        else "نجح",
+                                        tone = if (log.result == AuditResult.FAILURE)
+                                            ChipTone.DANGER else ChipTone.SUCCESS
                                     )
                                 }
+                                Text(
+                                    log.timestamp.format(dateTimeFmt),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Text(
                                     log.action.name +
                                         (log.volunteerName?.let { " — $it" } ?: ""),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (log.result == AuditResult.FAILURE)
-                                        MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
-                                Text(log.details, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    log.details,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }

@@ -3,7 +3,9 @@ package com.vigilante.app.ui.volunteers
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,8 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -25,13 +30,10 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HowToReg
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +42,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -67,12 +68,15 @@ import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import kotlinx.coroutines.launch
 import com.vigilante.app.data.local.entity.Permission
-import com.vigilante.app.data.local.entity.Volunteer
 import com.vigilante.app.data.local.entity.VolunteerStatus
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.ConfirmDialog
+import com.vigilante.app.ui.components.HeaderPanel
 import com.vigilante.app.ui.components.LoadingBox
 import com.vigilante.app.ui.components.SectionHeader
-import com.vigilante.app.ui.components.VigilanteTopBar
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
+import com.vigilante.app.ui.theme.AppColors
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -102,6 +106,7 @@ fun VolunteerDetailScreen(
 
     val whatsappMissing = stringResource(R.string.whatsapp_not_installed)
     val phoneCopied = stringResource(R.string.phone_copied)
+    val c = AppColors.current
 
     LaunchedEffect(message) {
         message?.let {
@@ -114,7 +119,6 @@ fun VolunteerDetailScreen(
     }
 
     Scaffold(
-        topBar = { VigilanteTopBar(title = "صفحة المتطوع", onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         val v = volunteer
@@ -126,207 +130,268 @@ fun VolunteerDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val photo = viewModel.photoFile()
-                if (photo != null) {
-                    AsyncImage(
-                        model = photo,
-                        contentDescription = stringResource(R.string.photo),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(110.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.size(110.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Icon(
-                            Icons.Filled.Person,
-                            contentDescription = null,
-                            modifier = Modifier.padding(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (qrFile != null) {
-                    AsyncImage(
-                        model = qrFile,
-                        contentDescription = "QR",
-                        modifier = Modifier.size(110.dp)
-                    )
-                }
-            }
-
-            Text(
-                v.displayName,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(
-                        if (v.status == VolunteerStatus.ACTIVE) stringResource(R.string.status_active)
-                        else stringResource(R.string.status_archived)
-                    )
-                }
-            )
-
-            // Quick actions
-            FlowRow(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ActionButton(stringResource(R.string.call), Icons.Filled.Call) {
-                    context.startActivity(
-                        Intent(Intent.ACTION_DIAL, Uri.parse("tel:${v.phone1}"))
-                    )
-                }
-                ActionButton(stringResource(R.string.whatsapp), Icons.Filled.Chat) {
-                    try {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${v.phone1}"))
-                                .setPackage("com.whatsapp")
-                        )
-                    } catch (e: ActivityNotFoundException) {
-                        scope.launch { snackbarHostState.showSnackbar(whatsappMissing) }
-                    }
-                }
-                ActionButton(stringResource(R.string.copy_number), Icons.Filled.ContentCopy) {
-                    clipboard.setText(AnnotatedString(v.phone1))
-                    scope.launch { snackbarHostState.showSnackbar(phoneCopied) }
-                }
-                ActionButton(stringResource(R.string.share_card), Icons.Filled.Share) {
-                    val share = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, viewModel.shareText(v))
-                    }
-                    context.startActivity(Intent.createChooser(share, "مشاركة بيانات المتطوع"))
-                }
-                if (BuildConfig.ATTENDANCE_ENABLED &&
-                    v.status == VolunteerStatus.ACTIVE &&
-                    viewModel.has(Permission.RECORD_ATTENDANCE)
-                ) {
-                    ActionButton(stringResource(R.string.record_attendance), Icons.Filled.HowToReg) {
-                        showAttendanceConfirm = true
-                    }
-                }
-                if (viewModel.has(Permission.EDIT_VOLUNTEER)) {
-                    ActionButton(stringResource(R.string.edit), Icons.Filled.Edit) {
-                        onEdit(v.volunteerId)
-                    }
-                }
-                if (v.status == VolunteerStatus.ACTIVE &&
-                    viewModel.has(Permission.ARCHIVE_VOLUNTEER)
-                ) {
-                    ActionButton(stringResource(R.string.archive_action), Icons.Filled.Archive) {
-                        showArchiveDialog = true
-                    }
-                }
-                if (v.status == VolunteerStatus.ARCHIVED &&
-                    viewModel.has(Permission.RESTORE_FROM_ARCHIVE)
-                ) {
-                    ActionButton(stringResource(R.string.restore_action), Icons.Filled.Restore) {
-                        viewModel.restore()
-                    }
-                }
-                if (v.status == VolunteerStatus.ARCHIVED &&
-                    viewModel.has(Permission.PERMANENT_DELETE)
-                ) {
-                    ActionButton(
-                        stringResource(R.string.delete_permanently),
-                        Icons.Filled.DeleteForever
-                    ) { showDeleteFirst = true }
-                }
-            }
+                    .background(c.headerStart)
+                    .statusBarsPadding()
+            )
 
-            HorizontalDivider()
-            SectionHeader("البيانات")
-            Card {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    DetailRow(stringResource(R.string.volunteer_id), v.volunteerId)
-                    DetailRow(stringResource(R.string.membership_number), v.membershipNumber)
+            HeaderPanel(
+                title = v.displayName,
+                subtitle = "${v.volunteerId} · ${v.membershipNumber}",
+                onBack = onBack,
+                content = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val photo = viewModel.photoFile()
+                        if (photo != null) {
+                            AsyncImage(
+                                model = photo,
+                                contentDescription = stringResource(R.string.photo),
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(CircleShape)
+                                    .background(c.onHeader.copy(alpha = 0.14f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    v.displayName.trim().firstOrNull()?.toString() ?: "؟",
+                                    style = MaterialTheme.typography.displaySmall,
+                                    color = c.onHeader
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            StatusChip(
+                                text = if (v.status == VolunteerStatus.ACTIVE)
+                                    stringResource(R.string.status_active)
+                                else stringResource(R.string.status_archived),
+                                tone = if (v.status == VolunteerStatus.ACTIVE)
+                                    ChipTone.SUCCESS else ChipTone.NEUTRAL
+                            )
+                            Text(
+                                stringResource(R.string.join_date) + ": " + v.joinDate,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.onHeaderMuted,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            if (v.bloodGroup?.isNotBlank() == true) {
+                                Text(
+                                    stringResource(R.string.blood_group) + ": " + v.bloodGroup,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = c.onHeaderMuted
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                // ---- quick actions ----
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ActionButton(stringResource(R.string.call), Icons.Filled.Call) {
+                        context.startActivity(
+                            Intent(Intent.ACTION_DIAL, Uri.parse("tel:${v.phone1}"))
+                        )
+                    }
+                    ActionButton(stringResource(R.string.whatsapp), Icons.Filled.Chat) {
+                        try {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${v.phone1}"))
+                                    .setPackage("com.whatsapp")
+                            )
+                        } catch (e: ActivityNotFoundException) {
+                            scope.launch { snackbarHostState.showSnackbar(whatsappMissing) }
+                        }
+                    }
+                    ActionButton(stringResource(R.string.copy_number), Icons.Filled.ContentCopy) {
+                        clipboard.setText(AnnotatedString(v.phone1))
+                        scope.launch { snackbarHostState.showSnackbar(phoneCopied) }
+                    }
+                    ActionButton(stringResource(R.string.share_card), Icons.Filled.Share) {
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, viewModel.shareText(v))
+                        }
+                        context.startActivity(Intent.createChooser(share, "مشاركة بيانات المتطوع"))
+                    }
+                    if (BuildConfig.ATTENDANCE_ENABLED &&
+                        v.status == VolunteerStatus.ACTIVE &&
+                        viewModel.has(Permission.RECORD_ATTENDANCE)
+                    ) {
+                        ActionButton(
+                            stringResource(R.string.record_attendance),
+                            Icons.Filled.HowToReg
+                        ) { showAttendanceConfirm = true }
+                    }
+                    if (viewModel.has(Permission.EDIT_VOLUNTEER)) {
+                        ActionButton(stringResource(R.string.edit), Icons.Filled.Edit) {
+                            onEdit(v.volunteerId)
+                        }
+                    }
+                    if (v.status == VolunteerStatus.ACTIVE &&
+                        viewModel.has(Permission.ARCHIVE_VOLUNTEER)
+                    ) {
+                        ActionButton(stringResource(R.string.archive_action), Icons.Filled.Archive) {
+                            showArchiveDialog = true
+                        }
+                    }
+                    if (v.status == VolunteerStatus.ARCHIVED &&
+                        viewModel.has(Permission.RESTORE_FROM_ARCHIVE)
+                    ) {
+                        ActionButton(stringResource(R.string.restore_action), Icons.Filled.Restore) {
+                            viewModel.restore()
+                        }
+                    }
+                    if (v.status == VolunteerStatus.ARCHIVED &&
+                        viewModel.has(Permission.PERMANENT_DELETE)
+                    ) {
+                        ActionButton(
+                            stringResource(R.string.delete_permanently),
+                            Icons.Filled.DeleteForever,
+                            destructive = true
+                        ) { showDeleteFirst = true }
+                    }
+                }
+
+                // ---- QR ----
+                if (qrFile != null) {
+                    SectionHeader("رمز QR")
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AsyncImage(
+                                model = qrFile,
+                                contentDescription = "QR",
+                                modifier = Modifier.size(168.dp)
+                            )
+                            Text(
+                                v.volunteerId,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                // ---- بيانات شخصية ----
+                SectionHeader("بيانات شخصية")
+                DataCard {
                     DetailRow(stringResource(R.string.first_name), v.firstName)
                     DetailRow(stringResource(R.string.last_name), v.lastName)
                     DetailRow(stringResource(R.string.father_name), v.fatherName)
                     DetailRow(stringResource(R.string.birth_date), v.birthDate?.toString())
-                    DetailRow(stringResource(R.string.join_date), v.joinDate.toString())
-                    DetailRow(stringResource(R.string.municipality), v.municipality)
-                    DetailRow(stringResource(R.string.district), v.district)
-                    DetailRow(stringResource(R.string.blood_group), v.bloodGroup)
+                    DetailRow(stringResource(R.string.blood_group), v.bloodGroup, last = true)
+                }
+
+                // ---- الاتصال ----
+                SectionHeader("الاتصال")
+                DataCard {
                     DetailRow(stringResource(R.string.phone1), v.phone1)
                     DetailRow(stringResource(R.string.phone2), v.phone2)
-                    DetailRow(stringResource(R.string.notes), v.notes)
+                    DetailRow(stringResource(R.string.municipality), v.municipality)
+                    DetailRow(stringResource(R.string.district), v.district, last = true)
+                }
+
+                // ---- العضوية ----
+                SectionHeader("العضوية")
+                DataCard {
+                    DetailRow(stringResource(R.string.volunteer_id), v.volunteerId)
+                    DetailRow(stringResource(R.string.membership_number), v.membershipNumber)
+                    DetailRow(stringResource(R.string.join_date), v.joinDate.toString())
                     if (v.status == VolunteerStatus.ARCHIVED) {
                         DetailRow("تاريخ الأرشفة", v.archiveDate?.format(dateTimeFmt))
                         DetailRow("أرشفه", v.archivedBy)
                         DetailRow("سبب الأرشفة", v.archiveReason)
                     }
+                    DetailRow(stringResource(R.string.notes), v.notes, last = true)
                 }
-            }
 
-            if (tags.isNotEmpty()) {
-                SectionHeader(stringResource(R.string.tags))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    tags.forEach { tag ->
-                        AssistChip(onClick = {}, label = { Text(tag.name) })
-                    }
-                }
-            }
-
-            if (BuildConfig.ATTENDANCE_ENABLED) {
-                SectionHeader("ملخص الحضور")
-                Card {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        DetailRow("عدد مرات الحضور", summary.count.toString())
-                        DetailRow("أول حضور", summary.first?.format(dateTimeFmt))
-                        DetailRow("آخر حضور", summary.last?.format(dateTimeFmt))
-                    }
-                }
-            }
-
-            SectionHeader(stringResource(R.string.timeline))
-            if (timeline.isEmpty()) {
-                Text(
-                    "لا توجد عمليات مسجلة",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Card {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        timeline.forEach { log ->
-                            Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                                Text(
-                                    "${log.timestamp.format(dateTimeFmt)} — ${log.adminUsername}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(log.details, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            HorizontalDivider()
+                if (tags.isNotEmpty()) {
+                    SectionHeader(stringResource(R.string.tags))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        tags.forEach { tag ->
+                            AssistChip(
+                                onClick = {},
+                                shape = MaterialTheme.shapes.small,
+                                label = { Text(tag.name) }
+                            )
                         }
                     }
                 }
+
+                if (BuildConfig.ATTENDANCE_ENABLED) {
+                    SectionHeader("ملخص الحضور")
+                    DataCard {
+                        DetailRow("عدد مرات الحضور", summary.count.toString())
+                        DetailRow("أول حضور", summary.first?.format(dateTimeFmt))
+                        DetailRow("آخر حضور", summary.last?.format(dateTimeFmt), last = true)
+                    }
+                }
+
+                SectionHeader(stringResource(R.string.timeline))
+                if (timeline.isEmpty()) {
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "لا توجد عمليات مسجلة",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(14.dp)
+                        )
+                    }
+                } else {
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            timeline.forEachIndexed { index, log ->
+                                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                    Text(
+                                        "${log.timestamp.format(dateTimeFmt)} — ${log.adminUsername}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Text(
+                                        log.details,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (index < timeline.lastIndex) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(28.dp))
             }
-            Spacer(Modifier.height(24.dp))
         }
 
         if (showAttendanceConfirm) {
@@ -345,6 +410,7 @@ fun VolunteerDetailScreen(
             var reason by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { showArchiveDialog = false },
+                shape = MaterialTheme.shapes.large,
                 title = { Text(stringResource(R.string.archive_action)) },
                 text = {
                     Column {
@@ -354,6 +420,7 @@ fun VolunteerDetailScreen(
                             value = reason,
                             onValueChange = { reason = it },
                             label = { Text(stringResource(R.string.archive_reason)) },
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -402,31 +469,69 @@ fun VolunteerDetailScreen(
 
 private val dateTimeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
 
+/** VCard wrapper used for every label/value group on this screen. */
 @Composable
-private fun ActionButton(label: String, icon: ImageVector, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.size(6.dp))
-        Text(label)
+private fun DataCard(content: @Composable () -> Unit) {
+    VCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
+            content()
+        }
     }
 }
 
 @Composable
-private fun DetailRow(label: String, value: String?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+private fun ActionButton(
+    label: String,
+    icon: ImageVector,
+    destructive: Boolean = false,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.heightIn(min = 48.dp)
     ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (destructive) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.secondary
+        )
+        Spacer(Modifier.width(6.dp))
         Text(
             label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.labelLarge,
+            color = if (destructive) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurface
         )
-        Text(
-            value?.takeIf { it.isNotBlank() } ?: "—",
-            style = MaterialTheme.typography.bodyLarge
-        )
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String?, last: Boolean = false) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                value?.takeIf { it.isNotBlank() } ?: "—",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        if (!last) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
     }
 }

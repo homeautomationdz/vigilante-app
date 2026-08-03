@@ -14,11 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -40,7 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 import com.vigilante.app.data.local.entity.AttendanceStatus
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import java.time.format.DateTimeFormatter
 
@@ -79,41 +83,50 @@ fun AttendanceLogScreen(
                 onValueChange = viewModel::setQuery,
                 placeholder = { Text("ابحث بالاسم أو المشرف أو التاريخ…") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setQuery("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = "مسح البحث")
+                        }
+                    }
+                },
                 singleLine = true,
+                shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             )
             if (rows.isEmpty()) {
                 EmptyState(text = stringResource(R.string.no_results), icon = Icons.Filled.EventBusy)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     items(rows, key = { it.attendance.attendanceId }) { row ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = {},
-                                    onLongClick = {
-                                        if (row.attendance.status == AttendanceStatus.VALID) {
-                                            cancelTarget = row
-                                        }
-                                    }
-                                )
-                        ) {
+                        VCard(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .combinedClickable(
+                                        onClick = {},
+                                        onLongClick = {
+                                            if (row.attendance.status == AttendanceStatus.VALID) {
+                                                cancelTarget = row
+                                            }
+                                        }
+                                    )
+                                    .padding(14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text(row.volunteerName, style = MaterialTheme.typography.titleMedium)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        row.volunteerName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     Text(
                                         row.attendance.recordedAt.format(timeFmt) +
                                             " — " + row.attendance.adminUsername,
@@ -129,11 +142,9 @@ fun AttendanceLogScreen(
                                     }
                                 }
                                 if (row.attendance.status == AttendanceStatus.CANCELLED) {
-                                    Text(
-                                        "ملغى",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
+                                    StatusChip(text = "ملغى", tone = ChipTone.DANGER)
+                                } else {
+                                    StatusChip(text = "مسجل", tone = ChipTone.SUCCESS)
                                 }
                             }
                         }
@@ -146,6 +157,7 @@ fun AttendanceLogScreen(
             var note by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { cancelTarget = null },
+                shape = MaterialTheme.shapes.large,
                 title = { Text("إلغاء سجل الحضور") },
                 text = {
                     Column {
@@ -155,6 +167,7 @@ fun AttendanceLogScreen(
                             value = note,
                             onValueChange = { note = it },
                             label = { Text("سبب الإلغاء") },
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

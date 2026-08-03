@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,7 +41,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
 import com.vigilante.app.data.excel.ConflictResolution
 import com.vigilante.app.data.excel.MergeItem
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
+import com.vigilante.app.ui.theme.AppColors
 import java.time.format.DateTimeFormatter
 
 private val dateTimeFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
@@ -88,19 +90,27 @@ fun ImportFlowScreen(
                     Text(
                         "جارٍ المعالجة… يتم إنشاء نسخة احتياطية تلقائية قبل أي تعديل",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 16.dp)
                     )
                 }
                 else -> {
-                    Text(
-                        "اختر ملف Volunteers_Import.xlsx لبدء الاستيراد.\n" +
-                            "سيتم فحص الملف والتحقق من البيانات قبل أي دمج، " +
-                            "مع إنشاء نسخة احتياطية تلقائية.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
+                    Spacer(Modifier.height(16.dp))
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "اختر ملف Volunteers_Import.xlsx لبدء الاستيراد.\n" +
+                                "سيتم فحص الملف والتحقق من البيانات قبل أي دمج، " +
+                                "مع إنشاء نسخة احتياطية تلقائية.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = {
                             filePicker.launch(
@@ -110,9 +120,10 @@ fun ImportFlowScreen(
                                 )
                             )
                         },
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(54.dp)
                     ) {
                         Icon(Icons.Filled.UploadFile, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
@@ -126,6 +137,7 @@ fun ImportFlowScreen(
             is ImportUiState.Failed -> {
                 AlertDialog(
                     onDismissRequest = viewModel::cancelFlow,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text("تعذر الاستيراد") },
                     text = { Text(s.reason) },
                     confirmButton = {
@@ -138,6 +150,7 @@ fun ImportFlowScreen(
             is ImportUiState.Errors -> {
                 AlertDialog(
                     onDismissRequest = viewModel::cancelFlow,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text("أخطاء في الملف") },
                     text = {
                         LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
@@ -145,6 +158,7 @@ fun ImportFlowScreen(
                                 Text(
                                     "سطر ${error.rowNumber} (${error.sheet}): ${error.message}",
                                     style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
                             }
@@ -160,6 +174,7 @@ fun ImportFlowScreen(
             is ImportUiState.OrgWarning -> {
                 AlertDialog(
                     onDismissRequest = viewModel::cancelFlow,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text("تنبيه: جمعية مختلفة") },
                     text = {
                         Text(
@@ -184,6 +199,7 @@ fun ImportFlowScreen(
             is ImportUiState.PlanReady -> {
                 AlertDialog(
                     onDismissRequest = viewModel::cancelFlow,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text("ملخص الدمج") },
                     text = {
                         Column {
@@ -225,6 +241,7 @@ fun ImportFlowScreen(
             is ImportUiState.Done -> {
                 AlertDialog(
                     onDismissRequest = onBack,
+                    shape = MaterialTheme.shapes.large,
                     title = { Text(stringResource(R.string.import_report_title)) },
                     text = {
                         Column {
@@ -252,17 +269,21 @@ fun ImportFlowScreen(
 
 @Composable
 private fun SummaryRow(label: String, count: Int) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Text(
             count.toString(),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = AppColors.current.statValue
         )
     }
 }
@@ -277,6 +298,7 @@ private fun ConflictDialog(
 ) {
     AlertDialog(
         onDismissRequest = {},
+        shape = MaterialTheme.shapes.large,
         title = { Text("تعارض $position من $total") },
         text = {
             Column {
@@ -286,9 +308,13 @@ private fun ConflictDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
-                Card {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text("النسخة الحالية", style = MaterialTheme.typography.titleMedium)
+                VCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "النسخة الحالية",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         item.current?.let { current ->
                             Text(current.displayName)
                             Text("هاتف: ${current.phone1}" + (current.phone2?.let { " / $it" } ?: ""))
@@ -302,9 +328,13 @@ private fun ConflictDialog(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Card {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text("النسخة المستوردة", style = MaterialTheme.typography.titleMedium)
+                VCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "النسخة المستوردة",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Text(item.incoming.displayName)
                         Text(
                             "هاتف: ${item.incoming.phone1}" +

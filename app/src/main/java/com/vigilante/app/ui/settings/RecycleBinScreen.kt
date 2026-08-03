@@ -4,16 +4,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,8 +40,11 @@ import com.vigilante.app.R
 import com.vigilante.app.data.local.VigilanteDatabase
 import com.vigilante.app.data.local.entity.RecycleBinEntry
 import com.vigilante.app.data.repository.VolunteerRepository
+import com.vigilante.app.ui.components.ChipTone
 import com.vigilante.app.ui.components.ConfirmDialog
 import com.vigilante.app.ui.components.EmptyState
+import com.vigilante.app.ui.components.StatusChip
+import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,13 +124,17 @@ fun RecycleBinScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(entries, key = { it.id }) { entry ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(entry.displayName, style = MaterialTheme.typography.titleMedium)
+                    VCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(
+                                entry.displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                             Text(
                                 entry.entityId,
                                 style = MaterialTheme.typography.labelMedium,
@@ -134,40 +143,45 @@ fun RecycleBinScreen(
                             Text(
                                 "حُذف في ${entry.deletedAt.format(dateTimeFmt)} — بواسطة ${entry.deletedBy}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
-                            Text(
-                                "يُحذف نهائيًا بعد ${entry.purgeAfter.format(dateTimeFmt)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
+                            StatusChip(
+                                text = "يُحذف نهائيًا بعد ${entry.purgeAfter.format(dateTimeFmt)}",
+                                tone = ChipTone.WARNING,
+                                modifier = Modifier.padding(top = 6.dp)
                             )
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(top = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 OutlinedButton(
                                     onClick = { restoreTarget = entry },
+                                    shape = MaterialTheme.shapes.medium,
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(
                                         Icons.Filled.Restore,
                                         contentDescription = null,
-                                        modifier = Modifier.padding(end = 4.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
+                                    Spacer(Modifier.width(6.dp))
                                     Text(stringResource(R.string.restore_action))
                                 }
                                 OutlinedButton(
                                     onClick = { deleteFirstTarget = entry },
+                                    shape = MaterialTheme.shapes.medium,
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(
                                         Icons.Filled.DeleteForever,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.padding(end = 4.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
+                                    Spacer(Modifier.width(6.dp))
                                     Text(
                                         stringResource(R.string.delete_permanently),
                                         color = MaterialTheme.colorScheme.error
