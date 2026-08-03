@@ -14,8 +14,8 @@ android {
         applicationId = "com.vigilante.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.0"
+        versionCode = 9
+        versionName = "2.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }

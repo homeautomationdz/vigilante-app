@@ -11,6 +11,7 @@ import com.vigilante.app.ui.admins.AdminsScreen
 import com.vigilante.app.ui.archive.ArchiveScreen
 import com.vigilante.app.ui.attendance.AttendanceLogScreen
 import com.vigilante.app.ui.attendance.AttendanceScreen
+import com.vigilante.app.ui.attendance.RollCallScreen
 import com.vigilante.app.ui.backup.BackupScreen
 import com.vigilante.app.ui.backup.ImportFlowScreen
 import com.vigilante.app.ui.home.HomeScreen
@@ -41,6 +42,7 @@ sealed class Route(val route: String) {
     }
     data object Attendance : Route("attendance")
     data object AttendanceLog : Route("attendance_log")
+    data object RollCall : Route("roll_call")
     data object Stats : Route("stats")
     data object Archive : Route("archive")
     data object Admins : Route("admins")
@@ -132,12 +134,20 @@ fun VigilanteNavHost(
             AttendanceScreen(
                 onBack = { navController.popBackStack() },
                 onOpenLog = { navController.navigate(Route.AttendanceLog.route) },
+                onOpenRollCall = { navController.navigate(Route.RollCall.route) },
                 onOpenVolunteer = { id -> navController.navigate(Route.VolunteerDetail.of(id)) }
             )
         }
 
         composable(Route.AttendanceLog.route) {
             AttendanceLogScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Route.RollCall.route) {
+            RollCallScreen(
+                onBack = { navController.popBackStack() },
+                onOpenVolunteer = { id -> navController.navigate(Route.VolunteerDetail.of(id)) }
+            )
         }
 
         composable(Route.Stats.route) {

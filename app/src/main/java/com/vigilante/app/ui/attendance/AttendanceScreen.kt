@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
@@ -55,6 +56,7 @@ private val timeFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
 fun AttendanceScreen(
     onBack: () -> Unit,
     onOpenLog: () -> Unit,
+    onOpenRollCall: () -> Unit,
     onOpenVolunteer: (String) -> Unit,
     viewModel: AttendanceViewModel = hiltViewModel()
 ) {
@@ -101,10 +103,21 @@ fun AttendanceScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            Row(
+            // Roll call is the primary way to take attendance: one list, one
+            // tap per person present — no QR handling for a whole team.
+            MenuTile(
+                label = "نداء الحضور — تأشير من القائمة",
+                icon = Icons.Filled.FactCheck,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 14.dp),
+                onClick = onOpenRollCall
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 MenuTile(
