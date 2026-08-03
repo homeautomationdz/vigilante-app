@@ -44,21 +44,23 @@ class ImportExportService @Inject constructor(
     private val downloads: DownloadsWriter,
     private val syslog: SystemLogger
 ) {
-    suspend fun readImportFile(file: File): ImportReadResult {
+    /**
+     * @param password supplied by the user when the picked file turns out to be
+     *        password-protected; the stored setting is tried first so the usual
+     *        case needs no typing at all.
+     */
+    suspend fun readImportFile(file: File, password: String? = null): ImportReadResult {
         check(session.has(Permission.IMPORT_EXCEL)) { "لا تملك صلاحية الاستيراد" }
         val orgId = db.settingsDao().get(AppSetting.KEY_ORG_ID)
-        // Password-protected export? Decrypt transparently — the supervisor
-        // uploading the file never types the password (user decision).
+
         val readable = if (ExcelCrypto.isEncrypted(file)) {
-            val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)
-                ?: return ImportReadResult.InvalidFile(
-                    "الملف مشفر وكلمة مرور ملفات Excel غير محددة في الإعدادات"
-                )
-            runCatching { ExcelCrypto.decryptToTemp(file, password, folders.import) }
+            val candidate = password?.takeIf { it.isNotBlank() }
+                ?: db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
+                ?: return ImportReadResult.NeedsPassword(wrongAttempt = false)
+            runCatching { ExcelCrypto.decryptToTemp(file, candidate, folders.import) }
                 .getOrElse { e ->
-                    return ImportReadResult.InvalidFile(
-                        e.message ?: "تعذر فك تشفير الملف — تحقق من كلمة المرور في الإعدادات"
-                    )
+                    syslog.log("IMPORT", "فشل فك تشفير ملف الاستيراد", e)
+                    return ImportReadResult.NeedsPassword(wrongAttempt = true)
                 }
         } else file
         return try {
@@ -175,9 +177,14 @@ class ImportExportService @Inject constructor(
      */
     suspend fun export(appVersion: String): Result<ExportOutcome> = runCatching {
         check(session.has(Permission.EXPORT_EXCEL)) { "لا تملك صلاحية التصدير" }
-        val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)
-            ?.takeIf { it.isNotBlank() }
-            ?: error("حدد أولًا كلمة مرور ملفات Excel من الإعدادات لحماية الملف المصدَّر")
+        // Encryption is opt-in: plain xlsx unless the admin turned it on AND set
+        // a password. Without it the file opens straight away in Excel.
+        val encryptEnabled = db.settingsDao().get(AppSetting.KEY_ENCRYPT_EXPORTS)
+            ?.equals("true", true) == true
+        val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
+        if (encryptEnabled && password == null) {
+            error("التشفير مفعّل لكن كلمة مرور الملفات غير محددة — حددها من الإعدادات أو أوقف التشفير")
+        }
         folders.ensureAll()
         var name = "Export_${LocalDate.now()}.xlsx"
         var target = File(folders.export, name)
@@ -185,18 +192,22 @@ class ImportExportService @Inject constructor(
         while (target.exists()) {
             name = "Export_${LocalDate.now()}_$i.xlsx"; target = File(folders.export, name); i++
         }
-        // 1) plain workbook to a temp file, 2) encrypt into Export/, 3) copy to Downloads
-        val plain = File(folders.export, "$name.plain.tmp")
-        try {
-            exporter.exportAll(plain, appVersion)
-            ExcelCrypto.encrypt(plain, target, password)
-        } finally {
-            plain.delete()
+        if (encryptEnabled && password != null) {
+            // plain workbook to a temp file, then encrypt it into Export/
+            val plain = File(folders.export, "$name.plain.tmp")
+            try {
+                exporter.exportAll(plain, appVersion)
+                ExcelCrypto.encrypt(plain, target, password)
+            } finally {
+                plain.delete()
+            }
+        } else {
+            exporter.exportAll(target, appVersion)
         }
         db.withTransaction {
             audit.log(
                 session.require().admin.username, AuditAction.EXPORT_EXCEL,
-                "تصدير مشفر: $name"
+                if (encryptEnabled) "تصدير مشفر: $name" else "تصدير: $name"
             )
         }
         // Suggested display name for the system save dialog (user spec).

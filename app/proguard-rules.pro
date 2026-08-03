@@ -2,7 +2,7 @@
 -keep class com.vigilante.app.data.local.entity.** { *; }
 -keep class org.dhatim.fastexcel.** { *; }
 -dontwarn org.dhatim.fastexcel.**
--dontwarn javax.xml.stream.**
+# javax.xml.stream (StAX) is unavailable on Android — nothing at runtime uses it
 -keep class com.google.zxing.** { *; }
 
 # Office encryption is implemented in-house (data/excel/crypto) — no Apache POI

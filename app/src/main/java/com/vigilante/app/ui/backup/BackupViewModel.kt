@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-const val APP_VERSION = "2.1"
+const val APP_VERSION = "2.2"
 
 /** Which long-running operation is in flight (drives per-button spinners). */
 enum class BackupBusy { NONE, BACKUP, EXPORT, SAVING }
@@ -98,7 +98,10 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    /** Builds + encrypts the workbook on IO; on success [exportReady] is set. */
+    /**
+     * Builds the workbook on IO (encrypted only when that setting is on);
+     * on success [exportReady] is set.
+     */
     fun export() {
         if (_busy.value != BackupBusy.NONE) return
         viewModelScope.launch {
@@ -134,11 +137,11 @@ class BackupViewModel @Inject constructor(
         )
     }
 
-    /** Copies the encrypted manual backup to the user-picked SAF location. */
+    /** Copies the shareable manual backup to the user-picked SAF location. */
     fun saveBackupTo(uri: Uri) {
         val protectedFile = _backupOutcome.value?.protectedFile
         if (protectedFile == null) {
-            _errorDialog.value = "لم تعد النسخة المشفرة متاحة — أنشئ نسخة احتياطية جديدة"
+            _errorDialog.value = "لم تعد النسخة الاحتياطية متاحة — أنشئ نسخة احتياطية جديدة"
             return
         }
         copyFileTo(
@@ -147,7 +150,7 @@ class BackupViewModel @Inject constructor(
             tag = "BACKUP_UI",
             onSaved = {
                 _backupOutcome.value = null
-                _message.value = "تم حفظ النسخة المشفرة في المكان الذي اخترته"
+                _message.value = "تم حفظ النسخة الاحتياطية في المكان الذي اخترته"
             }
         )
     }

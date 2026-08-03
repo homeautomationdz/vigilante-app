@@ -23,6 +23,8 @@ sealed class ImportReadResult {
     data class Success(val data: ImportedData) : ImportReadResult()
     data class InvalidFile(val reason: String) : ImportReadResult()
     data class ValidationFailed(val errors: List<RowError>) : ImportReadResult()
+    /** The file is encrypted and no (or no correct) password was supplied yet. */
+    data class NeedsPassword(val wrongAttempt: Boolean) : ImportReadResult()
     /** Organization mismatch warning (SRS ch. 34) — user may still proceed. */
     data class WrongOrganization(val fileOrgId: String, val localOrgId: String, val data: ImportedData) : ImportReadResult()
 }

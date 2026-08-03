@@ -31,6 +31,12 @@ sealed interface ImportUiState {
     /** Terminal failure — shown in an explicit AlertDialog, not a snackbar. */
     data class Failed(val reason: String) : ImportUiState
     data class Errors(val errors: List<RowError>) : ImportUiState
+
+    /**
+     * The picked file is encrypted and needs a password before it can be read.
+     * [wrongAttempt] is true after a password that did not open the file.
+     */
+    data class NeedsPassword(val wrongAttempt: Boolean) : ImportUiState
     data class OrgWarning(
         val fileOrgId: String,
         val localOrgId: String,
@@ -59,31 +65,64 @@ class ImportViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
+    /**
+     * Local copy of the picked file, kept so the read can be retried with a
+     * password without asking the user to pick the file again.
+     */
+    private var pickedFile: File? = null
+
     fun onFilePicked(uri: Uri) {
         viewModelScope.launch {
             _state.value = ImportUiState.Working
-            val readResult = withContext(Dispatchers.IO) {
+            val copied = withContext(Dispatchers.IO) {
                 runCatching {
                     folders.ensureAll()
                     val target = File(folders.import, AppFolders.IMPORT_FILE_NAME)
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: error("تعذر فتح الملف")
-                    service.readImportFile(target)
+                    target
                 }
             }
-            readResult
-                .onSuccess { handleReadResult(it) }
+            copied
+                .onSuccess { file ->
+                    pickedFile = file
+                    read(file, null)
+                }
                 .onFailure {
                     _state.value = ImportUiState.Failed(it.message ?: "تعذر قراءة الملف")
                 }
         }
     }
 
+    /** Re-reads the already-copied file with the password the user typed. */
+    fun submitPassword(password: String) {
+        val file = pickedFile
+        if (file == null) {
+            _state.value = ImportUiState.Failed("لم يعد الملف متاحًا — اختر الملف من جديد")
+            return
+        }
+        viewModelScope.launch {
+            _state.value = ImportUiState.Working
+            read(file, password)
+        }
+    }
+
+    private suspend fun read(file: File, password: String?) {
+        runCatching { withContext(Dispatchers.IO) { service.readImportFile(file, password) } }
+            .onSuccess { handleReadResult(it) }
+            .onFailure {
+                _state.value = ImportUiState.Failed(it.message ?: "تعذر قراءة الملف")
+            }
+    }
+
     private suspend fun handleReadResult(result: ImportReadResult) {
         when (result) {
+            // The reason is already a precise Arabic sentence — show it verbatim.
             is ImportReadResult.InvalidFile ->
-                _state.value = ImportUiState.Failed("ملف Excel غير صالح: ${result.reason}")
+                _state.value = ImportUiState.Failed(result.reason)
+            is ImportReadResult.NeedsPassword ->
+                _state.value = ImportUiState.NeedsPassword(result.wrongAttempt)
             is ImportReadResult.ValidationFailed ->
                 _state.value = ImportUiState.Errors(result.errors)
             is ImportReadResult.WrongOrganization ->
@@ -150,6 +189,7 @@ class ImportViewModel @Inject constructor(
     }
 
     fun cancelFlow() {
+        pickedFile = null
         _state.value = ImportUiState.Idle
     }
 

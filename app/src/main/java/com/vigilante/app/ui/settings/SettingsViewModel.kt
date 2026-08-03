@@ -26,6 +26,7 @@ data class SettingsUiState(
     val sessionTimeoutMinutes: String = "15",
     val recycleBinDays: String = "30",
     val excelPassword: String = "",
+    val encryptExports: Boolean = false,
     val readOnlyMode: Boolean = false
 )
 
@@ -75,6 +76,8 @@ class SettingsViewModel @Inject constructor(
                     settingsRepository.get(AppSetting.KEY_SESSION_TIMEOUT_MINUTES) ?: "15",
                 recycleBinDays = settingsRepository.get(AppSetting.KEY_RECYCLE_BIN_DAYS) ?: "30",
                 excelPassword = settingsRepository.get(AppSetting.KEY_EXCEL_PASSWORD).orEmpty(),
+                encryptExports =
+                    settingsRepository.get(AppSetting.KEY_ENCRYPT_EXPORTS) == "true",
                 readOnlyMode = session.readOnlyMode ||
                     settingsRepository.get(AppSetting.KEY_READ_ONLY_MODE) == "true"
             )
@@ -140,6 +143,19 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.set(AppSetting.KEY_EXCEL_PASSWORD, password)
                 .onSuccess { _message.value = "تم حفظ كلمة مرور ملفات Excel" }
                 .onFailure { _message.value = it.message ?: "تعذر الحفظ" }
+        }
+    }
+
+    /** Exports are plain by default; encryption is opt-in (needs a saved password). */
+    fun setEncryptExports(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.set(AppSetting.KEY_ENCRYPT_EXPORTS, enabled.toString())
+                .onSuccess {
+                    _state.value = _state.value.copy(encryptExports = enabled)
+                    _message.value = if (enabled) "سيتم تشفير الملفات المصدَّرة"
+                    else "سيتم تصدير الملفات بدون تشفير"
+                }
+                .onFailure { _message.value = it.message ?: "تعذر تغيير الإعداد" }
         }
     }
 

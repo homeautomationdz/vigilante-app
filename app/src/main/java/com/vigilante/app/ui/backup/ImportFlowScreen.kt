@@ -16,12 +16,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,10 +35,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -145,6 +153,13 @@ fun ImportFlowScreen(
                             Text(stringResource(R.string.ok))
                         }
                     }
+                )
+            }
+            is ImportUiState.NeedsPassword -> {
+                ImportPasswordDialog(
+                    wrongAttempt = s.wrongAttempt,
+                    onOpen = viewModel::submitPassword,
+                    onCancel = viewModel::cancelFlow
                 )
             }
             is ImportUiState.Errors -> {
@@ -265,6 +280,69 @@ fun ImportFlowScreen(
             else -> Unit
         }
     }
+}
+
+/** Asks for the password of an encrypted Excel file before the read is retried. */
+@Composable
+private fun ImportPasswordDialog(
+    wrongAttempt: Boolean,
+    onOpen: (String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onCancel,
+        shape = MaterialTheme.shapes.large,
+        title = { Text("الملف محمي بكلمة مرور") },
+        text = {
+            Column {
+                Text(
+                    "أدخل كلمة مرور ملف Excel لفتحه",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("كلمة المرور") },
+                    singleLine = true,
+                    isError = wrongAttempt,
+                    shape = MaterialTheme.shapes.small,
+                    visualTransformation = if (visible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { visible = !visible }) {
+                            Icon(
+                                if (visible) Icons.Filled.VisibilityOff
+                                else Icons.Filled.Visibility,
+                                contentDescription = stringResource(R.string.show_password)
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (wrongAttempt) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "كلمة المرور غير صحيحة — حاول مرة أخرى",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onOpen(password) },
+                enabled = password.isNotBlank()
+            ) { Text("فتح") }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text("إلغاء") }
+        }
+    )
 }
 
 @Composable

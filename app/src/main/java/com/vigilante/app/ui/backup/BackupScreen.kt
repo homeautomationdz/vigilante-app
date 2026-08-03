@@ -120,7 +120,7 @@ fun BackupScreen(
             title = { Text("الملف جاهز — اختر مكان الحفظ") },
             text = {
                 Text(
-                    "تم إنشاء الملف المشفر:\n${ready.fileName}\n\n" +
+                    "تم إنشاء الملف:\n${ready.fileName}\n\n" +
                         "اختر المكان الذي تريد حفظه فيه. توجد نسخة داخلية أيضًا في مجلد " +
                         "Vigilante/Export داخل التطبيق."
                 )
@@ -150,10 +150,9 @@ fun BackupScreen(
                 Text(
                     if (outcome.protectedFile != null) {
                         "توجد نسخة داخلية في:\n${outcome.internalPath}" +
-                            "\n\nيمكنك أيضًا حفظ نسخة مشفرة في المكان الذي تختاره."
+                            "\n\nيمكنك أيضًا حفظ نسخة في المكان الذي تختاره."
                     } else {
-                        "تم الحفظ داخل مجلد التطبيق:\n${outcome.internalPath}" +
-                            "\n\nلحفظ نسخة مشفرة خارج التطبيق، حدد أولًا كلمة مرور ملفات Excel من الإعدادات."
+                        "تم الحفظ داخل مجلد التطبيق:\n${outcome.internalPath}"
                     }
                 )
             },

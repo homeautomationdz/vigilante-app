@@ -84,19 +84,24 @@ class BackupManager @Inject constructor(
         "Android/data/com.vigilante.app/files/Vigilante/Backup/${record.fileName}"
 
     /**
-     * Manual backup (user request): prepares an ENCRYPTED copy when the Excel
-     * password is configured; the UI then opens the system "save as" dialog so
-     * the user chooses exactly where it goes, and always shows the location.
+     * Manual backup: the UI then opens the system "save as" dialog so the user
+     * chooses exactly where the copy goes, and always shows the location.
+     * The copy is encrypted only when encryption is switched on in settings —
+     * otherwise it is the plain workbook, which opens straight away in Excel.
      */
     suspend fun createManual(appVersion: String): ManualBackupOutcome {
         val record = create(reason = "MANUAL", appVersion = appVersion)
         val internal = backupFile(record)
+        val encryptEnabled = db.settingsDao().get(AppSetting.KEY_ENCRYPT_EXPORTS)
+            ?.equals("true", true) == true
         val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
-        val protectedFile = if (password != null) {
+        val shareable = if (encryptEnabled && password != null) {
             val encrypted = File(folders.backup, "protected_" + record.fileName)
             ExcelCrypto.encrypt(internal, encrypted, password)
             encrypted
-        } else null
-        return ManualBackupOutcome(record, internalPathOf(record), protectedFile)
+        } else {
+            internal
+        }
+        return ManualBackupOutcome(record, internalPathOf(record), shareable)
     }
 }

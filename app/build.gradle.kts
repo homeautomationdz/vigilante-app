@@ -14,8 +14,8 @@ android {
         applicationId = "com.vigilante.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "2.1"
+        versionCode = 10
+        versionName = "2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -118,7 +118,10 @@ dependencies {
 
     // Excel streaming read/write (low memory footprint per NFR)
     implementation(libs.fastexcel)
-    implementation(libs.fastexcel.reader)
+    // NOTE: fastexcel-READER is test-only — it parses via StAX/aalto-xml, which
+    // does not exist on Android (R8 surfaced it as "Failed resolution of: La4/a"
+    // and every import failed). Reading is done by data/excel/XlsxReader.kt on
+    // java.util.zip + SAX, both of which ship with the platform.
 
     // Password hashing
     implementation(libs.bcrypt)
@@ -137,6 +140,7 @@ dependencies {
     // our code and decrypt with POI (and vice-versa) so a regression that would
     // produce a file Excel cannot open fails the build instead of the phone.
     testImplementation(libs.poi.core)
+    testImplementation(libs.fastexcel.reader)
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.coroutines.test)
