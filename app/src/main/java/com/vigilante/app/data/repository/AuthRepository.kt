@@ -11,6 +11,7 @@ import com.vigilante.app.data.local.entity.AuditAction
 import com.vigilante.app.data.local.entity.AuditResult
 import com.vigilante.app.data.local.entity.LoginAttemptState
 import com.vigilante.app.security.PasswordHasher
+import com.vigilante.app.security.RecoveryCode
 import com.vigilante.app.security.Session
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -25,6 +26,20 @@ sealed class LoginResult {
     data class Locked(val remainingSeconds: Long) : LoginResult()
 }
 
+/** The Super Admin plus the recovery code that must be shown once at setup. */
+data class FirstRunResult(val admin: Admin, val recoveryCode: String)
+
+sealed class RecoveryResult {
+    /** Password reset; [newRecoveryCode] replaces the code just consumed. */
+    data class Success(val newRecoveryCode: String) : RecoveryResult()
+    data object Invalid : RecoveryResult()
+    data object WeakPassword : RecoveryResult()
+    data object NoRecoveryConfigured : RecoveryResult()
+    data class Locked(val remainingSeconds: Long) : RecoveryResult()
+}
+
+private const val RECOVERY_THROTTLE_KEY = "__recovery__"
+
 @Singleton
 class AuthRepository @Inject constructor(
     private val db: VigilanteDatabase,
@@ -33,12 +48,15 @@ class AuthRepository @Inject constructor(
 ) {
     suspend fun hasAnyAccount(): Boolean = db.adminDao().count() > 0
 
-    /** First run (SRS ch. 3): create the Super Admin + organization identity. */
+    /**
+     * First run (SRS ch. 3): create the Super Admin + organization identity,
+     * and mint the one-time recovery code the setup screen must show.
+     */
     suspend fun createFirstSuperAdmin(
         fullName: String,
         username: String,
         password: String
-    ): Result<Admin> {
+    ): Result<FirstRunResult> {
         if (!Validation.isValidUsername(username)) {
             return Result.failure(IllegalArgumentException("اسم المستخدم غير صالح"))
         }
@@ -68,10 +86,103 @@ class AuthRepository @Inject constructor(
                 db.settingsDao().put(
                     AppSetting(AppSetting.KEY_DB_VERSION, AppSetting.CURRENT_DB_VERSION)
                 )
+                val recoveryCode = RecoveryCode.generate()
+                db.settingsDao().put(
+                    AppSetting(AppSetting.KEY_RECOVERY_CODE_HASH, RecoveryCode.hash(recoveryCode))
+                )
                 audit.log(admin.username, AuditAction.ADD_ADMIN, "إنشاء حساب مدير النظام الأول")
-                admin
+                audit.log(admin.username, AuditAction.RECOVERY_CODE_ISSUED, "إصدار رمز استرجاع جديد")
+                FirstRunResult(admin, recoveryCode)
             }
         }
+    }
+
+    // ---- account recovery ----
+
+    suspend fun hasRecoveryCode(): Boolean =
+        !db.settingsDao().get(AppSetting.KEY_RECOVERY_CODE_HASH).isNullOrBlank()
+
+    /**
+     * Issues a fresh code and invalidates the previous one. Available to a
+     * signed-in Super Admin from settings, and used automatically after a
+     * successful recovery so the owner is never left without one.
+     */
+    suspend fun regenerateRecoveryCode(): Result<String> = runCatching {
+        val actor = session.require()
+        check(actor.admin.role == AdminRole.SUPER_ADMIN) { "مدير النظام فقط يمكنه تجديد رمز الاسترجاع" }
+        val code = RecoveryCode.generate()
+        db.withTransaction {
+            db.settingsDao().put(
+                AppSetting(AppSetting.KEY_RECOVERY_CODE_HASH, RecoveryCode.hash(code))
+            )
+            audit.log(actor.admin.username, AuditAction.RECOVERY_CODE_ISSUED, "تجديد رمز الاسترجاع")
+        }
+        code
+    }
+
+    /**
+     * Resets a Super Admin's password using the recovery code, then issues a
+     * replacement code (returned) so the account stays recoverable.
+     * Wrong attempts are throttled with the same lock as failed logins.
+     */
+    suspend fun recoverWithCode(
+        username: String,
+        code: String,
+        newPassword: String
+    ): RecoveryResult {
+        val name = username.trim()
+        val now = LocalDateTime.now()
+        val maxAttempts = settingInt(AppSetting.KEY_MAX_LOGIN_ATTEMPTS, 5)
+        val lockSeconds = settingInt(AppSetting.KEY_LOCK_SECONDS, 30).toLong()
+
+        db.adminDao().attemptState(RECOVERY_THROTTLE_KEY)?.lockedUntil?.let { until ->
+            if (until.isAfter(now)) {
+                return RecoveryResult.Locked(
+                    ChronoUnit.SECONDS.between(now, until).coerceAtLeast(1)
+                )
+            }
+        }
+        if (!Validation.isValidPassword(newPassword)) return RecoveryResult.WeakPassword
+
+        val storedHash = db.settingsDao().get(AppSetting.KEY_RECOVERY_CODE_HASH)
+            ?.takeIf { it.isNotBlank() }
+            ?: return RecoveryResult.NoRecoveryConfigured
+
+        val admin = db.adminDao().byUsername(name)
+        val codeOk = RecoveryCode.verify(code, storedHash)
+        // The account must exist AND be a Super Admin, but the failure message
+        // stays generic so the screen cannot be used to enumerate accounts.
+        if (!codeOk || admin == null || admin.role != AdminRole.SUPER_ADMIN) {
+            val failures = (db.adminDao().attemptState(RECOVERY_THROTTLE_KEY)?.consecutiveFailures ?: 0) + 1
+            val lockedUntil = if (failures >= maxAttempts) now.plusSeconds(lockSeconds) else null
+            db.adminDao().upsertAttemptState(
+                LoginAttemptState(
+                    RECOVERY_THROTTLE_KEY,
+                    failures % maxAttempts.coerceAtLeast(1),
+                    lockedUntil
+                )
+            )
+            db.withTransaction {
+                audit.log(
+                    name, AuditAction.RECOVERY_FAILED,
+                    "محاولة استرجاع فاشلة", result = AuditResult.FAILURE
+                )
+            }
+            return RecoveryResult.Invalid
+        }
+
+        val freshCode = RecoveryCode.generate()
+        db.withTransaction {
+            db.adminDao().update(admin.copy(passwordHash = PasswordHasher.hash(newPassword)))
+            db.settingsDao().put(
+                AppSetting(AppSetting.KEY_RECOVERY_CODE_HASH, RecoveryCode.hash(freshCode))
+            )
+            db.adminDao().clearAttempts(RECOVERY_THROTTLE_KEY)
+            db.adminDao().clearAttempts(name)
+            audit.log(name, AuditAction.RECOVERY_USED, "استرجاع الحساب برمز الاسترجاع")
+            audit.log(name, AuditAction.RECOVERY_CODE_ISSUED, "إصدار رمز استرجاع بديل")
+        }
+        return RecoveryResult.Success(freshCode)
     }
 
     /** SRS ch. 3: 5 consecutive failures → 30-second lock; failures audited. */

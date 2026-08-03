@@ -2,15 +2,19 @@ package com.vigilante.app.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vigilante.app.R
 import com.vigilante.app.core.Validation
 import com.vigilante.app.data.repository.AuthRepository
 import com.vigilante.app.data.repository.LoginResult
+import com.vigilante.app.data.repository.RecoveryResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class LoginUiState(
@@ -20,10 +24,25 @@ data class LoginUiState(
     val success: Boolean = false
 )
 
+/**
+ * [recoveryCode] is non-null only between a successful creation and the moment
+ * the owner confirms they wrote the code down — the screen must not navigate on.
+ */
 data class FirstRunUiState(
     val loading: Boolean = false,
     val error: String? = null,
-    val created: Boolean = false
+    val recoveryCode: String? = null
+)
+
+/**
+ * Drives the "نسيت كلمة المرور؟" dialog on the login screen.
+ * [errorRes] is a string-resource id for messages that already exist in strings.xml.
+ */
+data class RecoveryUiState(
+    val loading: Boolean = false,
+    val error: String? = null,
+    val errorRes: Int? = null,
+    val newRecoveryCode: String? = null
 )
 
 @HiltViewModel
@@ -36,6 +55,9 @@ class LoginViewModel @Inject constructor(
 
     private val _firstRun = MutableStateFlow(FirstRunUiState())
     val firstRun: StateFlow<FirstRunUiState> = _firstRun
+
+    private val _recovery = MutableStateFlow(RecoveryUiState())
+    val recovery: StateFlow<RecoveryUiState> = _recovery
 
     private var countdownJob: Job? = null
 
@@ -95,13 +117,63 @@ class LoginViewModel @Inject constructor(
                     username = name,
                     password = password
                 )
-                    .onSuccess { _firstRun.value = FirstRunUiState(created = true) }
+                    .onSuccess { result ->
+                        _firstRun.value = FirstRunUiState(recoveryCode = result.recoveryCode)
+                    }
                     .onFailure {
                         _firstRun.value = FirstRunUiState(
                             error = it.message ?: "تعذر إنشاء الحساب"
                         )
                     }
             }
+        }
+    }
+
+    /** Called once the owner confirms the first-run code was written down. */
+    fun acknowledgeFirstRunCode() {
+        _firstRun.value = FirstRunUiState()
+    }
+
+    // ---- account recovery ----
+
+    /** Resets the password with the recovery code; the reply carries a new code. */
+    fun recover(username: String, code: String, newPassword: String, confirm: String) {
+        val name = username.trim()
+        when {
+            name.isBlank() || code.isBlank() || newPassword.isBlank() ->
+                _recovery.value = RecoveryUiState(error = "أكمل جميع الحقول")
+            newPassword != confirm ->
+                _recovery.value = RecoveryUiState(error = "كلمتا المرور غير متطابقتين")
+            else -> viewModelScope.launch {
+                _recovery.value = RecoveryUiState(loading = true)
+                val result = withContext(Dispatchers.IO) {
+                    authRepository.recoverWithCode(name, code, newPassword)
+                }
+                _recovery.value = when (result) {
+                    is RecoveryResult.Success ->
+                        RecoveryUiState(newRecoveryCode = result.newRecoveryCode)
+                    is RecoveryResult.Invalid ->
+                        RecoveryUiState(error = "اسم المستخدم أو رمز الاسترجاع غير صحيح")
+                    is RecoveryResult.WeakPassword ->
+                        RecoveryUiState(errorRes = R.string.error_password_weak)
+                    is RecoveryResult.NoRecoveryConfigured ->
+                        RecoveryUiState(error = "لا يوجد رمز استرجاع محفوظ لهذا التطبيق")
+                    is RecoveryResult.Locked -> RecoveryUiState(
+                        error = "تم القفل مؤقتًا، حاول بعد ${result.remainingSeconds} ثانية"
+                    )
+                }
+            }
+        }
+    }
+
+    /** Clears the dialog state (cancelled, or the new code was acknowledged). */
+    fun clearRecovery() {
+        _recovery.value = RecoveryUiState()
+    }
+
+    fun clearRecoveryError() {
+        if (_recovery.value.error != null || _recovery.value.errorRes != null) {
+            _recovery.value = _recovery.value.copy(error = null, errorRes = null)
         }
     }
 

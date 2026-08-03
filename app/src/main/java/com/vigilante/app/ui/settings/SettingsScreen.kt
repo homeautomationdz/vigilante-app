@@ -63,6 +63,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.BuildConfig
 import com.vigilante.app.R
 import com.vigilante.app.ui.components.LoadingBox
+import com.vigilante.app.ui.components.RecoveryCodeReveal
 import com.vigilante.app.ui.components.SectionHeader
 import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.components.VigilanteTopBar
@@ -80,6 +81,8 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val message by viewModel.message.collectAsState()
+    val recoveryCode by viewModel.recoveryCode.collectAsState()
+    val regenerating by viewModel.regenerating.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showPasswordDialog by remember { mutableStateOf(false) }
 
@@ -281,6 +284,34 @@ fun SettingsScreen(
                             .heightIn(min = 48.dp)
                     ) { Text("حفظ كلمة مرور Excel") }
                 }
+                if (viewModel.isSuperAdmin()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "رمز الاسترجاع",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "التجديد يلغي الرمز القديم فورًا.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        OutlinedButton(
+                            onClick = viewModel::regenerateRecoveryCode,
+                            enabled = !regenerating,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("تجديد الرمز") }
+                    }
+                }
             }
 
             if (viewModel.isSuperAdmin()) {
@@ -424,6 +455,16 @@ fun SettingsScreen(
                         Text(stringResource(R.string.cancel))
                     }
                 }
+            )
+        }
+
+        val freshRecoveryCode = recoveryCode
+        if (freshRecoveryCode != null) {
+            RecoveryCodeReveal(
+                code = freshRecoveryCode,
+                body = "هذا رمز استرجاع جديد يحل محل القديم — احفظه في مكان آمن، " +
+                    "فهو الوسيلة الوحيدة لاستعادة الحساب إذا نسيت كلمة المرور.",
+                onDone = viewModel::clearRecoveryCode
             )
         }
     }

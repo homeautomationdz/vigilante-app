@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -27,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,16 +42,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
+import com.vigilante.app.ui.components.RecoveryCodeReveal
 import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.theme.AppColors
 
-const val APP_VERSION = "2.3"
+const val APP_VERSION = "2.4"
 
 /** Splash: the brand mark on the institutional navy gradient. */
 @Composable
@@ -176,9 +181,11 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.login.collectAsState()
+    val recovery by viewModel.recovery.collectAsState()
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var showPassword by rememberSaveable { mutableStateOf(false) }
+    var showRecoveryDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.success) {
         if (state.success) onLoggedIn()
@@ -254,7 +261,150 @@ fun LoginScreen(
                 )
             }
         }
+
+        TextButton(
+            onClick = {
+                viewModel.clearRecovery()
+                showRecoveryDialog = true
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                "نسيت كلمة المرور؟",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
     }
+
+    val newCode = recovery.newRecoveryCode
+    if (newCode != null) {
+        RecoveryCodeReveal(
+            code = newCode,
+            body = "تم تغيير كلمة المرور. هذا رمز استرجاع جديد يحل محل القديم — احفظه.",
+            onDone = {
+                showRecoveryDialog = false
+                password = ""
+                viewModel.clearRecovery()
+            }
+        )
+    } else if (showRecoveryDialog) {
+        RecoveryDialog(
+            state = recovery,
+            onEdit = viewModel::clearRecoveryError,
+            onSubmit = { name, code, newPassword, confirm ->
+                viewModel.recover(name, code, newPassword, confirm)
+            },
+            onDismiss = {
+                showRecoveryDialog = false
+                viewModel.clearRecovery()
+            }
+        )
+    }
+}
+
+/**
+ * Password reset with the offline recovery code (SRS ch. 3). Deliberately does
+ * not say whether the username or the code was the wrong one.
+ */
+@Composable
+private fun RecoveryDialog(
+    state: RecoveryUiState,
+    onEdit: () -> Unit,
+    onSubmit: (String, String, String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var username by rememberSaveable { mutableStateOf("") }
+    var code by rememberSaveable { mutableStateOf("") }
+    var newPassword by rememberSaveable { mutableStateOf("") }
+    var confirm by rememberSaveable { mutableStateOf("") }
+    var showPassword by rememberSaveable { mutableStateOf(false) }
+
+    val errorRes = state.errorRes
+    val errorText: String? = state.error
+        ?: if (errorRes != null) stringResource(errorRes) else null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.large,
+        title = { Text("استرجاع الحساب", style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "أدخل رمز الاسترجاع الذي حفظته عند إنشاء الحساب لتعيين كلمة مرور جديدة.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it; onEdit() },
+                    label = { Text(stringResource(R.string.username)) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it; onEdit() },
+                    label = { Text("رمز الاسترجاع") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it; onEdit() },
+                    label = { Text("كلمة المرور الجديدة") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    visualTransformation = if (showPassword) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(
+                                if (showPassword) Icons.Filled.VisibilityOff
+                                else Icons.Filled.Visibility,
+                                contentDescription = stringResource(R.string.show_password)
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirm,
+                    onValueChange = { confirm = it; onEdit() },
+                    label = { Text("تأكيد كلمة المرور الجديدة") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small,
+                    visualTransformation = if (showPassword) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (errorText != null) {
+                    Text(
+                        errorText,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSubmit(username, code, newPassword, confirm) },
+                enabled = !state.loading
+            ) { Text("استرجاع") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    )
 }
 
 @Composable
@@ -267,10 +417,6 @@ fun FirstRunScreen(
     var password by rememberSaveable { mutableStateOf("") }
     var confirm by rememberSaveable { mutableStateOf("") }
     var showPassword by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(state.created) {
-        if (state.created) onCreated()
-    }
 
     AuthLayout(
         title = stringResource(R.string.app_label),
@@ -357,5 +503,18 @@ fun FirstRunScreen(
                 )
             }
         }
+    }
+
+    // The account exists, but the owner only leaves this screen once they have
+    // acknowledged the one-time recovery code.
+    val code = state.recoveryCode
+    if (code != null) {
+        RecoveryCodeReveal(
+            code = code,
+            onDone = {
+                viewModel.acknowledgeFirstRunCode()
+                onCreated()
+            }
+        )
     }
 }

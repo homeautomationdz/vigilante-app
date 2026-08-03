@@ -6,6 +6,7 @@ import com.vigilante.app.data.local.entity.AdminRole
 import com.vigilante.app.data.local.entity.AppSetting
 import com.vigilante.app.data.local.entity.Permission
 import com.vigilante.app.data.repository.AdminRepository
+import com.vigilante.app.data.repository.AuthRepository
 import com.vigilante.app.data.repository.SettingsRepository
 import com.vigilante.app.security.Session
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val adminRepository: AdminRepository,
+    private val authRepository: AuthRepository,
     private val session: Session
 ) : ViewModel() {
 
@@ -41,6 +43,13 @@ class SettingsViewModel @Inject constructor(
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
+
+    /** Non-null only while a freshly minted recovery code is being revealed. */
+    private val _recoveryCode = MutableStateFlow<String?>(null)
+    val recoveryCode: StateFlow<String?> = _recoveryCode
+
+    private val _regenerating = MutableStateFlow(false)
+    val regenerating: StateFlow<Boolean> = _regenerating
 
     init {
         load()
@@ -171,6 +180,23 @@ class SettingsViewModel @Inject constructor(
                 .onSuccess { _message.value = "تم تغيير كلمة المرور" }
                 .onFailure { _message.value = it.message ?: "تعذر تغيير كلمة المرور" }
         }
+    }
+
+    /** Super Admin only — the new code invalidates the previous one at once. */
+    fun regenerateRecoveryCode() {
+        if (_regenerating.value) return
+        viewModelScope.launch {
+            _regenerating.value = true
+            authRepository.regenerateRecoveryCode()
+                .onSuccess { _recoveryCode.value = it }
+                .onFailure { _message.value = it.message ?: "تعذر تجديد رمز الاسترجاع" }
+            _regenerating.value = false
+        }
+    }
+
+    /** Called once the Super Admin confirms the new code was written down. */
+    fun clearRecoveryCode() {
+        _recoveryCode.value = null
     }
 
     fun clearMessage() {

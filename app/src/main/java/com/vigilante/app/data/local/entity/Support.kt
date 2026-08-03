@@ -29,6 +29,11 @@ data class AppSetting(
          *  leaves the phone protected. Never written into the exported
          *  Settings sheet. */
         const val KEY_EXCEL_PASSWORD = "excel_export_password"
+
+        /** BCrypt hash of the recovery code — the only way back in if the sole
+         *  Super Admin forgets their password. The code itself is shown once at
+         *  setup and never stored in readable form. */
+        const val KEY_RECOVERY_CODE_HASH = "recovery_code_hash"
         const val KEY_MEMBERSHIP_YEAR_SEQ_PREFIX = "membership_seq_" // + year → last used seq
 
         const val CURRENT_DB_VERSION = "1.0"
