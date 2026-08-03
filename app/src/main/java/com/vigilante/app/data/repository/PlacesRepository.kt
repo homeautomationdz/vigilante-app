@@ -22,6 +22,25 @@ class PlacesRepository @Inject constructor(
     fun municipalities(): Flow<List<Municipality>> = db.placesDao().municipalities()
     fun districtsOf(municipalityId: Long): Flow<List<District>> =
         db.placesDao().districtsOf(municipalityId)
+    fun allDistricts(): Flow<List<District>> = db.placesDao().allDistricts()
+
+    /**
+     * Records a حي typed while adding a volunteer so it appears as a suggestion
+     * next time and shows up in the places manager. Deliberately permission-free
+     * and silent: this is a by-product of ordinary data entry, not an admin
+     * settings change, and it must never make saving a volunteer fail.
+     */
+    suspend fun rememberDistrict(municipalityName: String?, districtName: String) {
+        val district = Validation.normalizeName(districtName)
+        val municipality = municipalityName?.let { Validation.normalizeName(it) }
+        if (district.isBlank() || municipality.isNullOrBlank()) return
+        runCatching {
+            val id = db.placesDao().municipalityByName(municipality)?.id
+            if (id != null) {
+                db.placesDao().insertDistrict(District(municipalityId = id, name = district))
+            }
+        }
+    }
 
     suspend fun addMunicipality(name: String): Result<Unit> = runCatching {
         requireManage()

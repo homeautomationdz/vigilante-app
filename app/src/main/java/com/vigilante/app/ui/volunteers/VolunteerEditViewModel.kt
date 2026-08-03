@@ -64,7 +64,7 @@ class VolunteerEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: VolunteerRepository,
     private val photoStore: PhotoStore,
-    placesRepository: PlacesRepository
+    private val placesRepository: PlacesRepository
 ) : ViewModel() {
 
     private val editId: String? = savedStateHandle.get<String>("id")?.takeIf { it.isNotBlank() }
@@ -76,14 +76,18 @@ class VolunteerEditViewModel @Inject constructor(
     val municipalities: StateFlow<List<Municipality>> = placesRepository.municipalities()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Districts of the currently selected municipality (empty when none matches). */
+    /**
+     * Suggestions for the free-text حي field: districts of the selected
+     * municipality, or every known district when no municipality is chosen.
+     * These only assist typing — the user may always write a new name.
+     */
     val districts: StateFlow<List<District>> =
         combine(municipalities, _state) { list, s ->
             list.firstOrNull { it.name == s.municipality }?.id
         }
             .distinctUntilChanged()
             .flatMapLatest { id ->
-                if (id == null) flowOf(emptyList()) else placesRepository.districtsOf(id)
+                if (id == null) placesRepository.allDistricts() else placesRepository.districtsOf(id)
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -203,6 +207,9 @@ class VolunteerEditViewModel @Inject constructor(
                     return@launch
                 }
             }
+            // A حي typed here is remembered for next time (and shows up in the
+            // places manager) — never blocks saving if it cannot be recorded.
+            placesRepository.rememberDistrict(s.municipality, s.district)
             if (s.isEdit) doUpdate(s) else doAdd(s)
         }
     }

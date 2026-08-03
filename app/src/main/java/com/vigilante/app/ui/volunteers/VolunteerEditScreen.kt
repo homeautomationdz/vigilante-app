@@ -237,21 +237,45 @@ fun VolunteerEditScreen(
                     }
                 )
                 Text(
-                    "تُدار القائمة من الإعدادات ← إدارة الأماكن",
+                    "قائمة البلديات تُدار من الإعدادات ← إدارة الأماكن",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                 )
             }
-            DropdownField(
-                label = stringResource(R.string.district),
-                selected = state.district.ifBlank { NO_PLACE },
-                options = listOf(NO_PLACE) + districts.map { it.name },
-                onSelected = { picked ->
-                    viewModel.update { it.copy(district = if (picked == NO_PLACE) "" else picked) }
-                },
-                enabled = state.municipality.isNotBlank()
-            )
+
+            // الحي: typed directly like the name fields (user request). Known
+            // districts appear as tappable suggestions, and whatever is typed
+            // is remembered for next time — no trip to the settings screen.
+            Column {
+                FieldWithError(
+                    value = state.district,
+                    onValue = { typed -> viewModel.update { it.copy(district = typed) } },
+                    label = stringResource(R.string.district),
+                    error = null
+                )
+                val suggestions = remember(districts, state.district) {
+                    val query = state.district.trim()
+                    districts.map { it.name }
+                        .distinct()
+                        .filter { query.isBlank() || (it.contains(query, true) && !it.equals(query, true)) }
+                        .take(6)
+                }
+                if (suggestions.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        suggestions.forEach { name ->
+                            InputChip(
+                                selected = false,
+                                onClick = { viewModel.update { it.copy(district = name) } },
+                                label = { Text(name) }
+                            )
+                        }
+                    }
+                }
+            }
 
             DropdownField(
                 label = stringResource(R.string.blood_group),
