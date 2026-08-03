@@ -237,33 +237,6 @@ fun SettingsScreen(
                     ) { Text(stringResource(R.string.save)) }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 8.dp)
-                        ) {
-                            Text(
-                                "تشفير الملفات المصدَّرة",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                "افتراضيًا الملفات تُصدَّر بدون تشفير. " +
-                                    "فعّل هذا الخيار فقط إذا كنت تشارك الملف خارج الفريق.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = state.encryptExports,
-                            onCheckedChange = viewModel::setEncryptExports
-                        )
-                    }
                     var showExcelPassword by remember { mutableStateOf(false) }
                     OutlinedTextField(
                         value = state.excelPassword,
@@ -271,16 +244,12 @@ fun SettingsScreen(
                             viewModel.update { it.copy(excelPassword = value) }
                         },
                         label = { Text("كلمة مرور ملفات Excel المصدَّرة") },
-                        enabled = state.encryptExports,
                         singleLine = true,
                         shape = MaterialTheme.shapes.small,
                         visualTransformation = if (showExcelPassword) VisualTransformation.None
                         else PasswordVisualTransformation(),
                         trailingIcon = {
-                            IconButton(
-                                onClick = { showExcelPassword = !showExcelPassword },
-                                enabled = state.encryptExports
-                            ) {
+                            IconButton(onClick = { showExcelPassword = !showExcelPassword }) {
                                 Icon(
                                     if (showExcelPassword) Icons.Filled.VisibilityOff
                                     else Icons.Filled.Visibility,
@@ -290,18 +259,22 @@ fun SettingsScreen(
                         },
                         supportingText = {
                             Text(
-                                "تُطلب عند فتح الملف على الكمبيوتر، " +
-                                    "وتُستخدم تلقائيًا عند إعادة استيراده.",
-                                color = if (state.encryptExports)
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.outline
+                                "إلزامية — كل ملف مصدَّر أو نسخة احتياطية تُشارَك تُشفَّر بها، " +
+                                    "وتُطلب عند فتح الملف على الكمبيوتر.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    if (state.excelPassword.isBlank()) {
+                        Text(
+                            "لم تُحدَّد بعد — التصدير والنسخ الاحتياطي لن يعملا قبل تحديدها.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     Button(
                         onClick = viewModel::saveExcelPassword,
-                        enabled = state.encryptExports,
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
                             .fillMaxWidth()

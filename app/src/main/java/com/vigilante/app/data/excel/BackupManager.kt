@@ -86,22 +86,16 @@ class BackupManager @Inject constructor(
     /**
      * Manual backup: the UI then opens the system "save as" dialog so the user
      * chooses exactly where the copy goes, and always shows the location.
-     * The copy is encrypted only when encryption is switched on in settings —
-     * otherwise it is the plain workbook, which opens straight away in Excel.
+     * The copy handed to that dialog is always encrypted — like exports, a
+     * backup must be protected the moment it leaves the phone.
      */
     suspend fun createManual(appVersion: String): ManualBackupOutcome {
+        val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
+            ?: throw MissingExportPasswordException()
         val record = create(reason = "MANUAL", appVersion = appVersion)
         val internal = backupFile(record)
-        val encryptEnabled = db.settingsDao().get(AppSetting.KEY_ENCRYPT_EXPORTS)
-            ?.equals("true", true) == true
-        val password = db.settingsDao().get(AppSetting.KEY_EXCEL_PASSWORD)?.takeIf { it.isNotBlank() }
-        val shareable = if (encryptEnabled && password != null) {
-            val encrypted = File(folders.backup, "protected_" + record.fileName)
-            ExcelCrypto.encrypt(internal, encrypted, password)
-            encrypted
-        } else {
-            internal
-        }
-        return ManualBackupOutcome(record, internalPathOf(record), shareable)
+        val encrypted = File(folders.backup, "protected_" + record.fileName)
+        ExcelCrypto.encrypt(internal, encrypted, password)
+        return ManualBackupOutcome(record, internalPathOf(record), encrypted)
     }
 }

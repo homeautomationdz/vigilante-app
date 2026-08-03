@@ -25,13 +25,10 @@ data class AppSetting(
         const val KEY_RECYCLE_BIN_DAYS = "recycle_bin_days"         // default 30
         const val KEY_READ_ONLY_MODE = "read_only_mode"             // "true"/"false"
         /** Password that protects exported .xlsx files (Office-native encryption).
-         *  Never written into the exported Settings sheet. */
+         *  Every export and every shared backup is encrypted with it — the file
+         *  leaves the phone protected. Never written into the exported
+         *  Settings sheet. */
         const val KEY_EXCEL_PASSWORD = "excel_export_password"
-
-        /** Encryption of exported files is OPT-IN ("true"/"false", default off):
-         *  the app is already behind a login with per-admin passwords, so forcing
-         *  a second password on every export only complicates the exchange. */
-        const val KEY_ENCRYPT_EXPORTS = "encrypt_exports"
         const val KEY_MEMBERSHIP_YEAR_SEQ_PREFIX = "membership_seq_" // + year → last used seq
 
         const val CURRENT_DB_VERSION = "1.0"

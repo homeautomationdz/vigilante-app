@@ -19,13 +19,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -35,9 +39,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vigilante.app.R
@@ -64,6 +72,7 @@ fun BackupScreen(
     val busy by viewModel.busy.collectAsState()
     val exportReady by viewModel.exportReady.collectAsState()
     val backupOutcome by viewModel.backupOutcome.collectAsState()
+    val passwordPrompt by viewModel.passwordPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(message) {
@@ -112,6 +121,93 @@ fun BackupScreen(
         )
     }
 
+    // No Excel password yet: set one here and the tapped action is retried.
+    if (passwordPrompt != null) {
+        var password by remember { mutableStateOf("") }
+        var confirm by remember { mutableStateOf("") }
+        var showPassword by remember { mutableStateOf(false) }
+        var validationError by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPasswordPrompt,
+            shape = MaterialTheme.shapes.large,
+            title = { Text("حدد كلمة مرور ملفات Excel") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "كل ملف مصدَّر أو نسخة احتياطية تُشارَك تُشفَّر بكلمة مرور. " +
+                            "حددها مرة واحدة وستُستخدم تلقائيًا بعد ذلك.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = {
+                            password = it
+                            validationError = null
+                        },
+                        label = { Text("كلمة المرور") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        visualTransformation = if (showPassword) VisualTransformation.None
+                        else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(
+                                    if (showPassword) Icons.Filled.VisibilityOff
+                                    else Icons.Filled.Visibility,
+                                    contentDescription = stringResource(R.string.show_password)
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirm,
+                        onValueChange = {
+                            confirm = it
+                            validationError = null
+                        },
+                        label = { Text("تأكيد كلمة المرور") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.small,
+                        visualTransformation = if (showPassword) VisualTransformation.None
+                        else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    validationError?.let { error ->
+                        Text(
+                            error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        validationError = when {
+                            password.isBlank() -> "كلمة المرور فارغة"
+                            password != confirm -> "كلمتا المرور غير متطابقتين"
+                            else -> null
+                        }
+                        if (validationError == null) {
+                            viewModel.saveExcelPasswordAndRetry(password)
+                        }
+                    },
+                    enabled = busy == BackupBusy.NONE
+                ) {
+                    Text("حفظ ومتابعة")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissPasswordPrompt) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     // Export finished: ask the user WHERE to save it.
     exportReady?.let { ready ->
         AlertDialog(
@@ -150,7 +246,7 @@ fun BackupScreen(
                 Text(
                     if (outcome.protectedFile != null) {
                         "توجد نسخة داخلية في:\n${outcome.internalPath}" +
-                            "\n\nيمكنك أيضًا حفظ نسخة في المكان الذي تختاره."
+                            "\n\nيمكنك أيضًا حفظ النسخة المشفرة في المكان الذي تختاره."
                     } else {
                         "تم الحفظ داخل مجلد التطبيق:\n${outcome.internalPath}"
                     }

@@ -48,7 +48,7 @@ import com.vigilante.app.R
 import com.vigilante.app.ui.components.VCard
 import com.vigilante.app.ui.theme.AppColors
 
-const val APP_VERSION = "2.2"
+const val APP_VERSION = "2.3"
 
 /** Splash: the brand mark on the institutional navy gradient. */
 @Composable

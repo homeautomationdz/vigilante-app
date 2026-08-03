@@ -9,9 +9,12 @@ import com.vigilante.app.core.SystemLogger
 import com.vigilante.app.data.excel.BackupManager
 import com.vigilante.app.data.excel.ImportExportService
 import com.vigilante.app.data.excel.ManualBackupOutcome
+import com.vigilante.app.data.excel.MissingExportPasswordException
 import com.vigilante.app.data.local.VigilanteDatabase
+import com.vigilante.app.data.local.entity.AppSetting
 import com.vigilante.app.data.local.entity.BackupRecord
 import com.vigilante.app.data.local.entity.Permission
+import com.vigilante.app.data.repository.SettingsRepository
 import com.vigilante.app.security.Session
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,10 +29,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-const val APP_VERSION = "2.2"
+const val APP_VERSION = "2.3"
 
 /** Which long-running operation is in flight (drives per-button spinners). */
 enum class BackupBusy { NONE, BACKUP, EXPORT, SAVING }
+
+/**
+ * Which user action hit the "no Excel password yet" wall — remembered so the
+ * password dialog can retry exactly the action the user originally tapped.
+ */
+enum class PendingProtectedAction { EXPORT, BACKUP }
 
 /**
  * A finished export waiting for the user to pick WHERE to save it.
@@ -45,6 +54,7 @@ class BackupViewModel @Inject constructor(
     db: VigilanteDatabase,
     private val backupManager: BackupManager,
     private val importExportService: ImportExportService,
+    private val settingsRepository: SettingsRepository,
     private val session: Session,
     private val syslog: SystemLogger,
     private val savedState: SavedStateHandle
@@ -76,6 +86,13 @@ class BackupViewModel @Inject constructor(
     private val _backupOutcome = MutableStateFlow<ManualBackupOutcome?>(null)
     val backupOutcome: StateFlow<ManualBackupOutcome?> = _backupOutcome
 
+    /**
+     * Non-null while the "set an Excel password first" dialog is showing; its
+     * value is the action to retry once the password is saved.
+     */
+    private val _passwordPrompt = MutableStateFlow<PendingProtectedAction?>(null)
+    val passwordPrompt: StateFlow<PendingProtectedAction?> = _passwordPrompt
+
     fun canImport(): Boolean = session.has(Permission.IMPORT_EXCEL)
     fun canExport(): Boolean = session.has(Permission.EXPORT_EXCEL)
 
@@ -90,17 +107,22 @@ class BackupViewModel @Inject constructor(
             }
                 .onSuccess { _backupOutcome.value = it }
                 .onFailure { e ->
-                    syslog.log("BACKUP_UI", "فشل إنشاء نسخة احتياطية يدوية", e)
-                    _errorDialog.value =
-                        "تعذر إنشاء النسخة الاحتياطية: ${e.message ?: "خطأ غير متوقع"}"
+                    if (e is MissingExportPasswordException) {
+                        _passwordPrompt.value = PendingProtectedAction.BACKUP
+                    } else {
+                        syslog.log("BACKUP_UI", "فشل إنشاء نسخة احتياطية يدوية", e)
+                        _errorDialog.value =
+                            "تعذر إنشاء النسخة الاحتياطية: ${e.message ?: "خطأ غير متوقع"}"
+                    }
                 }
             _busy.value = BackupBusy.NONE
         }
     }
 
     /**
-     * Builds the workbook on IO (encrypted only when that setting is on);
-     * on success [exportReady] is set.
+     * Builds the workbook on IO (always encrypted with the Excel password);
+     * on success [exportReady] is set. A missing password opens the prompt
+     * instead of failing outright.
      */
     fun export() {
         if (_busy.value != BackupBusy.NONE) return
@@ -113,10 +135,43 @@ class BackupViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     // The service already wrote the stack trace to system.log.
-                    _errorDialog.value = "فشل التصدير: ${e.message ?: "خطأ غير متوقع"}"
+                    if (e is MissingExportPasswordException) {
+                        _passwordPrompt.value = PendingProtectedAction.EXPORT
+                    } else {
+                        _errorDialog.value = "فشل التصدير: ${e.message ?: "خطأ غير متوقع"}"
+                    }
                 }
             _busy.value = BackupBusy.NONE
         }
+    }
+
+    /**
+     * Saves the Excel password from the prompt, then retries whichever action
+     * opened it. A save failure (e.g. missing MANAGE_SETTINGS) is reported in
+     * the normal error dialog and nothing is retried.
+     */
+    fun saveExcelPasswordAndRetry(password: String) {
+        val pending = _passwordPrompt.value ?: return
+        val value = password.trim()
+        if (value.isEmpty()) return
+        viewModelScope.launch {
+            settingsRepository.set(AppSetting.KEY_EXCEL_PASSWORD, value)
+                .onSuccess {
+                    _passwordPrompt.value = null
+                    when (pending) {
+                        PendingProtectedAction.EXPORT -> export()
+                        PendingProtectedAction.BACKUP -> createBackup()
+                    }
+                }
+                .onFailure { e ->
+                    _passwordPrompt.value = null
+                    _errorDialog.value = e.message ?: "تعذر حفظ كلمة المرور"
+                }
+        }
+    }
+
+    fun dismissPasswordPrompt() {
+        _passwordPrompt.value = null
     }
 
     /** Copies the finished export to the user-picked SAF location. */
